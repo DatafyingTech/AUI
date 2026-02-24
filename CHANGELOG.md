@@ -1,5 +1,17 @@
 # AUI (Agent UI) — Changelog
 
+## v0.2.2 — February 23, 2026
+
+### Bug Fixes
+- Fixed deploy failing with "Make sure 'claude' is in your PATH" — root cause was Tauri v2's shell plugin hardcoding `CREATE_NO_WINDOW` on all spawned processes, making every terminal invisible. Deploy now uses `ShellExecuteExW` via the shell `open()` API with a `.bat` launcher, which correctly opens a visible PowerShell window.
+- Fixed Windows path handling in deploy scripts — paths now use backslashes in generated `.ps1` and `.bat` files for proper PowerShell and cmd.exe compatibility.
+
+### Improvements
+- Moved Collapse/Expand toggle from the toolbar to the floating search bar for a cleaner, more subtle placement.
+- Improved deploy error messages — errors now show actual failure details instead of generic "Failed" text.
+
+---
+
 ## v0.2.1 — February 23, 2026
 
 ### Improvements

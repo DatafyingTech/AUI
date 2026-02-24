@@ -1,10 +1,25 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useUiStore } from "@/store/ui-store";
+import { useTreeStore } from "@/store/tree-store";
 
 export function SearchBar() {
   const searchQuery = useUiStore((s) => s.searchQuery);
   const setSearchQuery = useUiStore((s) => s.setSearchQuery);
+  const collapsedGroups = useUiStore((s) => s.collapsedGroups);
+  const collapseAllGroups = useUiStore((s) => s.collapseAllGroups);
+  const expandAllGroups = useUiStore((s) => s.expandAllGroups);
+  const nodes = useTreeStore((s) => s.nodes);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const groupIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const [id, node] of nodes) {
+      if (node.kind === "group") ids.add(id);
+    }
+    return ids;
+  }, [nodes]);
+
+  const allCollapsed = groupIds.size > 0 && groupIds.size === collapsedGroups.size;
 
   // Ctrl+F to focus search
   useEffect(() => {
@@ -28,7 +43,7 @@ export function SearchBar() {
         zIndex: 10,
         display: "flex",
         alignItems: "center",
-        gap: 8,
+        gap: 6,
         padding: "6px 12px",
         borderRadius: 10,
         background: "rgba(22, 33, 62, 0.75)",
@@ -81,6 +96,34 @@ export function SearchBar() {
         )}
       </div>
 
+      {/* Collapse/Expand toggle */}
+      {groupIds.size > 0 && (
+        <button
+          onClick={() => {
+            if (allCollapsed) {
+              expandAllGroups();
+            } else {
+              collapseAllGroups(groupIds);
+            }
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--text-secondary)",
+            cursor: "pointer",
+            fontSize: 11,
+            padding: "3px 6px",
+            borderRadius: 4,
+            whiteSpace: "nowrap",
+            transition: "color 0.15s",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-primary)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-secondary)"; }}
+          title={allCollapsed ? "Expand all teams" : "Collapse all teams"}
+        >
+          {allCollapsed ? "Expand" : "Collapse"}
+        </button>
+      )}
     </div>
   );
 }

@@ -464,36 +464,78 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
       setDeployOutput((prev) => [...prev, `Primer saved to ${primerPath}`, "Opening terminal..."]);
 
-      // Spawn a VISIBLE terminal window (not a hidden child process)
-      const { Command } = await import("@tauri-apps/plugin-shell");
-
       // Detect platform
       const isWindows = navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
       const isMac = navigator.userAgent.includes("Mac") || navigator.platform.startsWith("Mac");
 
+      // NOTE: Tauri v2's Command.create().spawn() hardcodes CREATE_NO_WINDOW on Windows,
+      // so ALL processes spawned that way are invisible. We MUST use the shell plugin's
+      // open() function instead, which uses ShellExecuteExW with SW_SHOWNORMAL.
+      const { open } = await import("@tauri-apps/plugin-shell");
+
       if (isWindows) {
-        // Windows: use cmd to open a new visible PowerShell window
-        const escapedPath = primerPath.replace(/'/g, "''");
-        const psScript = `$primer = Get-Content -Raw '${escapedPath}'; claude --dangerously-skip-permissions $primer`;
-        const cmd = Command.create("cmd", [
-          "/c", "start", "powershell", "-NoExit", "-Command", psScript,
-        ]);
-        await cmd.spawn();
+        // Convert forward-slash paths to Windows backslashes for script content
+        const winPrimerPath = primerPath.replace(/\//g, "\\");
+        const winAuiDir = auiDir.replace(/\//g, "\\");
+
+        // 1. Write the PowerShell deploy script
+        const scriptPath = join(auiDir, "deploy.ps1");
+        const winScriptPath = scriptPath.replace(/\//g, "\\");
+        const escapedPrimerPath = winPrimerPath.replace(/'/g, "''");
+        const ps1Content = [
+          "$ErrorActionPreference = 'Stop'",
+          `Write-Host 'Deploying team: ${node.name}' -ForegroundColor Cyan`,
+          `Write-Host 'Reading primer...' -ForegroundColor Yellow`,
+          `$primer = Get-Content -Raw '${escapedPrimerPath}'`,
+          `Write-Host 'Starting Claude...' -ForegroundColor Green`,
+          `claude --dangerously-skip-permissions $primer`,
+        ].join("\r\n");
+        await writeTextFile(scriptPath, ps1Content);
+
+        // 2. Write a .bat launcher — open() will execute it in a visible cmd window
+        //    which then spawns a visible PowerShell window via 'start'
+        const batPath = join(auiDir, "deploy-launcher.bat");
+        const batContent = [
+          "@echo off",
+          `start "AUI Deploy" powershell.exe -NoExit -ExecutionPolicy Bypass -File "${winScriptPath}"`,
+        ].join("\r\n");
+        await writeTextFile(batPath, batContent);
+
+        // 3. open() uses ShellExecuteExW — bypasses CREATE_NO_WINDOW entirely
+        await open(batPath);
       } else if (isMac) {
-        // macOS: write a temp deploy script and open it in Terminal.app
+        // macOS: write a deploy script and open it in Terminal.app via shell open()
         const scriptPath = join(auiDir, "deploy.sh");
-        await writeTextFile(scriptPath, `#!/bin/bash\nprimer=$(cat '${primerPath}')\nclaude --dangerously-skip-permissions "$primer"\nexec bash`);
-        const cmd = Command.create("bash", [
-          "-c", `chmod +x '${scriptPath}' && open -a Terminal '${scriptPath}'`,
-        ]);
+        const shContent = [
+          "#!/bin/bash",
+          `primer=$(cat '${primerPath}')`,
+          `claude --dangerously-skip-permissions "$primer"`,
+          "exec bash",
+        ].join("\n");
+        await writeTextFile(scriptPath, shContent);
+
+        const { Command } = await import("@tauri-apps/plugin-shell");
+        const chmod = Command.create("bash", ["-c", `chmod +x '${scriptPath}'`]);
+        await chmod.execute();
+        const cmd = Command.create("bash", ["-c", `open -a Terminal '${scriptPath}'`]);
         await cmd.spawn();
       } else {
-        // Linux: try common terminal emulators
-        const escapedPrimer = primerPath.replace(/'/g, "'\\''");
-        const innerCmd = `bash -c 'primer=$(cat \\\"${escapedPrimer}\\\"); claude --dangerously-skip-permissions \"$primer\"; exec bash'`;
+        // Linux: write a deploy script and open in available terminal emulator
+        const scriptPath = join(auiDir, "deploy.sh");
+        const shContent = [
+          "#!/bin/bash",
+          `primer=$(cat '${primerPath}')`,
+          `claude --dangerously-skip-permissions "$primer"`,
+          "exec bash",
+        ].join("\n");
+        await writeTextFile(scriptPath, shContent);
+
+        const { Command } = await import("@tauri-apps/plugin-shell");
+        const chmod = Command.create("bash", ["-c", `chmod +x '${scriptPath}'`]);
+        await chmod.execute();
         const cmd = Command.create("bash", [
           "-c",
-          `x-terminal-emulator -e ${innerCmd} 2>/dev/null || gnome-terminal -- ${innerCmd} 2>/dev/null || xterm -e ${innerCmd}`,
+          `x-terminal-emulator -e '${scriptPath}' 2>/dev/null || gnome-terminal -- '${scriptPath}' 2>/dev/null || xterm -e '${scriptPath}'`,
         ]);
         await cmd.spawn();
       }
@@ -510,9 +552,9 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
       toast("Team deployment launched in terminal!", "success");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed";
+      const msg = err instanceof Error ? err.message : String(err);
       setDeployOutput((prev) => [...prev, `Error: ${msg}`]);
-      toast(`Deploy failed: ${msg}. Make sure 'claude' is in your PATH.`, "error");
+      toast(`Deploy failed: ${msg}`, "error");
     }
     setDeploying(false);
   }, [buildFullPrimer, generateTeamSkillFiles, node.id, projectPath]);
