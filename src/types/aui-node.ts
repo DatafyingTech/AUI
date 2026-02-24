@@ -26,6 +26,27 @@ export interface AuiNode {
   launchPrompt: string;
 }
 
+export interface TreeExport {
+  version: "1.0";
+  exportedAt: number;
+  appVersion: string;
+  owner: { name: string; description: string };
+  nodes: AuiNode[];
+  hierarchy: Record<string, string | null>;
+  positions: Record<string, { x: number; y: number }>;
+  groups: Array<{
+    id: string;
+    name: string;
+    description: string;
+    parentId: string | null;
+    team: string | null;
+    assignedSkills: string[];
+    variables: NodeVariable[];
+    launchPrompt: string;
+  }>;
+  skillNameCache: Record<string, string>;
+}
+
 export interface TreeMetadata {
   owner: {
     name: string;

@@ -1,5 +1,6 @@
 import { useState, useEffect, type CSSProperties } from "react";
 import { readTextFile, writeTextFile, exists, mkdir } from "@tauri-apps/plugin-fs";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { useUiStore } from "@/store/ui-store";
 import { useTreeStore } from "@/store/tree-store";
 import { join } from "@/utils/paths";
@@ -294,6 +295,78 @@ export function SettingsPanel() {
             >
               Save Settings
             </button>
+
+            {/* Data */}
+            <div style={sectionStyle}>Data</div>
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <button
+                onClick={async () => {
+                  try {
+                    const json = useTreeStore.getState().exportTreeAsJson();
+                    const filePath = await save({
+                      filters: [{ name: "AUI Export", extensions: ["aui.json"] }],
+                      defaultPath: "tree-export.aui.json",
+                    });
+                    if (!filePath) return;
+                    await writeTextFile(filePath, json);
+                    toast("Tree exported successfully", "success");
+                  } catch (err) {
+                    toast(`Export failed: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  background: "transparent",
+                  color: "var(--accent-green, #3fb950)",
+                  border: "1px solid var(--accent-green, #3fb950)",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(63, 185, 80, 0.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                Export Tree
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const selected = await open({ filters: [{ name: "AUI Export", extensions: ["aui.json"] }] });
+                    if (!selected) return;
+                    const filePath = typeof selected === "string" ? selected : null;
+                    if (!filePath) return;
+                    const json = await readTextFile(filePath);
+                    useTreeStore.getState().importTreeFromJson(json);
+                    toast("Tree imported successfully", "success");
+                  } catch (err) {
+                    toast(`Import failed: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  background: "transparent",
+                  color: "var(--accent-blue, #4a9eff)",
+                  border: "1px solid var(--accent-blue, #4a9eff)",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(74, 158, 255, 0.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                Import Tree
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 4 }}>
+              Export saves your tree layout and metadata. Import restores from a .aui.json file.
+            </div>
           </>
         )}
 

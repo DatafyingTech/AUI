@@ -39,8 +39,16 @@ function OrgNodeInner({ data, selected }: NodeProps) {
   const parentNode = node.parentId ? allNodes.get(node.parentId) : null;
   const isMember = isGroup && parentNode?.kind === "group";
 
-  // Team nodes = blue, agents-in-teams = orange
-  const color = isMember ? "#f0883e" : KIND_COLORS[node.kind];
+  // Determine if this is a sub-agent (parent is an agent, not a team)
+  // A sub-agent's parent is either a file-based agent (kind === "agent")
+  // or a member-agent (group whose parent is also a group)
+  const parentIsMemberAgent = parentNode?.kind === "group" && parentNode.parentId
+    ? allNodes.get(parentNode.parentId)?.kind === "group"
+    : false;
+  const isSubAgent = isGroup && (parentNode?.kind === "agent" || parentIsMemberAgent);
+
+  // Team = blue, sub-agent = lighter blue, agent-in-team = orange
+  const color = isSubAgent ? "#58a6ff" : isMember ? "#f0883e" : KIND_COLORS[node.kind];
 
   // Resolve assigned skill names (tree node → name cache → raw ID)
   const skillNameCache = useTreeStore((s) => s.skillNameCache);
@@ -89,9 +97,11 @@ function OrgNodeInner({ data, selected }: NodeProps) {
   const currentHandleStyle = hovered ? handleHoverStyle : handleBaseStyle;
 
   const background = isGroup
-    ? isMember
-      ? "rgba(240, 136, 62, 0.06)"
-      : "rgba(74, 158, 255, 0.06)"
+    ? isSubAgent
+      ? "rgba(88, 166, 255, 0.06)"
+      : isMember
+        ? "rgba(240, 136, 62, 0.06)"
+        : "rgba(74, 158, 255, 0.06)"
     : isRoot
       ? "rgba(210, 153, 34, 0.08)"
       : "var(--bg-surface, #1c2333)";
@@ -152,7 +162,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
           borderRadius: 10,
         }}
       >
-        {isMember ? "AGENT" : isGroup ? "TEAM" : node.kind}
+        {isSubAgent ? "SUB-AGENT" : isMember ? "AGENT" : isGroup ? "TEAM" : node.kind}
       </div>
 
       {/* Name */}
@@ -197,7 +207,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             fontSize: 11,
-            color: isMember ? "#f0883e" : "#4a9eff",
+            color: isSubAgent ? "#58a6ff" : isMember ? "#f0883e" : "#4a9eff",
             marginTop: 4,
             display: "flex",
             alignItems: "center",

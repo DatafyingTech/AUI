@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { readTextFile, writeTextFile, exists, mkdir, remove } from "@tauri-apps/plugin-fs";
-import type { AuiNode, TreeMetadata } from "@/types/aui-node";
+import type { AuiNode, TreeMetadata, TreeExport } from "@/types/aui-node";
 import { scanProject } from "@/services/file-scanner";
 import { parseAgentFile } from "@/services/agent-parser";
 import { parseSkillFile } from "@/services/skill-parser";
@@ -40,6 +40,8 @@ interface TreeActions {
   exportTeamAsSkill(teamId: string): Promise<string>;
   generateTeamSkillFiles(teamId: string): Promise<string[]>;
   saveCompanyPlan(): Promise<string>;
+  exportTreeAsJson(): string;
+  importTreeFromJson(json: string): void;
   autoGroupByPrefix(): void;
 }
 
@@ -1243,6 +1245,113 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     }
 
     return planDir;
+  },
+
+  exportTreeAsJson(): string {
+    const { nodes, metadata, skillNameCache } = get();
+
+    const hierarchy: Record<string, string | null> = {};
+    const groups: TreeExport["groups"] = [];
+    const nodeArray: AuiNode[] = [];
+
+    for (const [id, node] of nodes) {
+      if (id === "root") continue;
+      hierarchy[id] = node.parentId;
+      nodeArray.push(node);
+
+      if (node.kind === "group") {
+        groups.push({
+          id: node.id,
+          name: node.name,
+          description: node.promptBody,
+          parentId: node.parentId,
+          team: node.team,
+          assignedSkills: node.assignedSkills,
+          variables: node.variables,
+          launchPrompt: node.launchPrompt,
+        });
+      }
+    }
+
+    const snc: Record<string, string> = {};
+    for (const [k, v] of skillNameCache) {
+      snc[k] = v;
+    }
+
+    const exportData: TreeExport = {
+      version: "1.0",
+      exportedAt: Date.now(),
+      appVersion: "0.3.4",
+      owner: metadata?.owner ?? { name: "Unknown", description: "" },
+      nodes: nodeArray,
+      hierarchy,
+      positions: metadata?.positions ?? {},
+      groups,
+      skillNameCache: snc,
+    };
+
+    return JSON.stringify(exportData, null, 2);
+  },
+
+  importTreeFromJson(json: string) {
+    const data = JSON.parse(json) as TreeExport;
+    if (data.version !== "1.0") {
+      set({ error: `Unsupported export version: ${data.version}` });
+      return;
+    }
+
+    const nodes = new Map<string, AuiNode>();
+
+    // Recreate root node with imported owner
+    const root = createRootNode(data.owner.name);
+    nodes.set("root", root);
+
+    // Restore all exported nodes
+    for (const node of data.nodes) {
+      nodes.set(node.id, node);
+    }
+
+    // Restore group nodes from the groups array (in case they weren't in nodes)
+    for (const g of data.groups) {
+      if (!nodes.has(g.id)) {
+        nodes.set(g.id, {
+          id: g.id,
+          name: g.name,
+          kind: "group",
+          parentId: g.parentId,
+          team: g.team,
+          sourcePath: "",
+          config: null,
+          promptBody: g.description,
+          tags: [],
+          lastModified: Date.now(),
+          validationErrors: [],
+          assignedSkills: g.assignedSkills ?? [],
+          variables: g.variables ?? [],
+          launchPrompt: g.launchPrompt ?? "",
+        });
+      }
+    }
+
+    // Restore skill name cache
+    const skillNameCache = new Map<string, string>();
+    for (const [k, v] of Object.entries(data.skillNameCache)) {
+      skillNameCache.set(k, v);
+    }
+
+    // Build metadata from imported data
+    const metadata: TreeMetadata = {
+      owner: data.owner,
+      hierarchy: data.hierarchy,
+      positions: data.positions,
+      groups: data.groups.length > 0 ? data.groups : undefined,
+      lastModified: Date.now(),
+    };
+
+    set({ nodes, skillNameCache, metadata, rootId: "root" });
+
+    // Persist to disk
+    get().saveTreeMetadata();
   },
 
   autoGroupByPrefix() {

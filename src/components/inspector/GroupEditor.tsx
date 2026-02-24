@@ -104,7 +104,6 @@ export function GroupEditor({ node }: GroupEditorProps) {
   const createSkillNode = useTreeStore((s) => s.createSkillNode);
   const cacheSkillName = useTreeStore((s) => s.cacheSkillName);
   const skillNameCache = useTreeStore((s) => s.skillNameCache);
-  const exportTeamAsSkill = useTreeStore((s) => s.exportTeamAsSkill);
   const generateTeamSkillFiles = useTreeStore((s) => s.generateTeamSkillFiles);
   const selectNode = useUiStore((s) => s.selectNode);
   const openCreateDialog = useUiStore((s) => s.openCreateDialog);
@@ -114,14 +113,11 @@ export function GroupEditor({ node }: GroupEditorProps) {
   const [variables, setVariables] = useState(node.variables);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [addSkillId, setAddSkillId] = useState("");
-  const [exporting, setExporting] = useState(false);
-  const [exportedPath, setExportedPath] = useState<string | null>(null);
   const [deploying, setDeploying] = useState(false);
   const [deployOutput, setDeployOutput] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [autoFillCount, setAutoFillCount] = useState(3);
   const [autoFilling, setAutoFilling] = useState(false);
-  const [generatingSkills, setGeneratingSkills] = useState(false);
   const [deployPrompt, setDeployPrompt] = useState("");
 
   // Create-new-skill inline form state
@@ -284,19 +280,6 @@ export function GroupEditor({ node }: GroupEditorProps) {
 
   const handleRemoveSkill = (skillId: string) => {
     removeSkillFromNode(node.id, skillId);
-  };
-
-  const handleExport = async () => {
-    setExporting(true);
-    setExportedPath(null);
-    try {
-      const path = await exportTeamAsSkill(node.id);
-      setExportedPath(path);
-      setTimeout(() => setExportedPath(null), 4000);
-    } catch {
-      // handled silently
-    }
-    setExporting(false);
   };
 
   const handleAutoFillAgents = useCallback(async () => {
@@ -484,17 +467,6 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
     return primer;
   }, [children, node, nodes, deployPrompt, readSkillFile, projectPath, skillNameCache]);
 
-  const handleGenerateSkills = useCallback(async () => {
-    setGeneratingSkills(true);
-    try {
-      const paths = await generateTeamSkillFiles(node.id);
-      toast(`Generated ${paths.length} skill file${paths.length !== 1 ? "s" : ""}`, "success");
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to generate skill files", "error");
-    }
-    setGeneratingSkills(false);
-  }, [generateTeamSkillFiles, node.id]);
-
   const handleDeploy = useCallback(async () => {
     setDeploying(true);
     setDeployOutput(["Generating missing skill files..."]);
@@ -678,48 +650,23 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
               {deploying ? "Preparing..." : "Deploy Team"}
             </button>
             <button
-              onClick={handleExport}
-              disabled={exporting}
+              onClick={() => useUiStore.getState().toggleSchedule()}
               style={{
                 flex: 1,
                 padding: "10px 16px",
-                background: exporting
-                  ? "var(--border-color)"
-                  : "transparent",
-                color: exporting ? "var(--text-secondary)" : "var(--accent-green)",
-                border: `1px solid ${exporting ? "var(--border-color)" : "var(--accent-green)"}`,
+                background: "transparent",
+                color: "var(--accent-purple)",
+                border: "1px solid var(--accent-purple)",
                 borderRadius: 6,
-                cursor: exporting ? "default" : "pointer",
+                cursor: "pointer",
                 fontSize: 13,
                 fontWeight: 600,
                 transition: "all 0.15s",
               }}
             >
-              {exporting ? "Exporting..." : "Export"}
+              Schedule
             </button>
           </div>
-
-          {/* Generate skill files button */}
-          <button
-            onClick={handleGenerateSkills}
-            disabled={generatingSkills}
-            style={{
-              width: "100%",
-              padding: "7px 12px",
-              marginBottom: 6,
-              background: "transparent",
-              color: "var(--accent-purple)",
-              border: "1px dashed var(--accent-purple)",
-              borderRadius: 6,
-              cursor: generatingSkills ? "default" : "pointer",
-              fontSize: 11,
-              fontWeight: 600,
-              opacity: generatingSkills ? 0.5 : 1,
-              transition: "opacity 0.15s",
-            }}
-          >
-            {generatingSkills ? "Generating..." : "Generate Skill Files"}
-          </button>
 
           <div
             style={{
@@ -729,21 +676,8 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
               lineHeight: 1.4,
             }}
           >
-            <b>Deploy</b> opens a terminal with the full primer. <b>Export</b> creates a reusable team skill. <b>Skill Files</b> creates individual SKILL.md for each agent.
+            <b>Deploy</b> opens a terminal with the full primer. <b>Schedule</b> sets up recurring runs.
           </div>
-
-          {exportedPath && (
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--accent-green)",
-                marginBottom: 4,
-                wordBreak: "break-all",
-              }}
-            >
-              Exported to: {exportedPath}
-            </div>
-          )}
 
           {/* Deploy output terminal */}
           {deployOutput.length > 0 && (
@@ -1073,50 +1007,57 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
           </div>
         )}
 
-        {children.map((child) => (
-          <div
-            key={child.id}
-            onClick={() => selectNode(child.id)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "6px 8px",
-              background: "rgba(74, 158, 255, 0.05)",
-              border: "1px solid var(--border-color)",
-              borderRadius: 4,
-              marginBottom: 4,
-              cursor: "pointer",
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.background =
-                "rgba(74, 158, 255, 0.12)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.background =
-                "rgba(74, 158, 255, 0.05)";
-            }}
-          >
-            <span
+        {children.map((child) => {
+          // Determine if this child is a sub-agent (its parent is an agent-in-team, not a top-level team)
+          const isChildSubAgent = isMember && child.kind === "group";
+          const badgeLabel = isChildSubAgent ? "sub-agent" : child.kind;
+          const badgeColor = isChildSubAgent ? "#58a6ff" : (kindBadgeColors[child.kind] ?? "var(--text-secondary)");
+
+          return (
+            <div
+              key={child.id}
+              onClick={() => selectNode(child.id)}
               style={{
-                display: "inline-block",
-                padding: "1px 6px",
-                borderRadius: 8,
-                fontSize: 10,
-                fontWeight: 600,
-                textTransform: "uppercase",
-                color: "white",
-                background: kindBadgeColors[child.kind] ?? "var(--text-secondary)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 8px",
+                background: "rgba(74, 158, 255, 0.05)",
+                border: "1px solid var(--border-color)",
+                borderRadius: 4,
+                marginBottom: 4,
+                cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.background =
+                  "rgba(74, 158, 255, 0.12)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.background =
+                  "rgba(74, 158, 255, 0.05)";
               }}
             >
-              {child.kind}
-            </span>
-            <span style={{ fontSize: 13, color: "var(--text-primary)" }}>
-              {child.name}
-            </span>
-          </div>
-        ))}
+              <span
+                style={{
+                  display: "inline-block",
+                  padding: "1px 6px",
+                  borderRadius: 8,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  color: "white",
+                  background: badgeColor,
+                }}
+              >
+                {badgeLabel}
+              </span>
+              <span style={{ fontSize: 13, color: "var(--text-primary)" }}>
+                {child.name}
+              </span>
+            </div>
+          );
+        })}
 
         <button
           onClick={() => openCreateDialog(node.id)}

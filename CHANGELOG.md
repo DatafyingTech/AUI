@@ -1,5 +1,20 @@
 # AUI (Agent UI) — Changelog
 
+## v0.3.5 — February 24, 2026
+
+### Enhancements
+- **Export/Import moved to Settings panel** — the Export Tree and Import Tree buttons are now in a new "Data" section inside the Settings panel (between Preferences and Advanced), keeping the toolbar clean
+- **Schedule button on team editor** — replaced the Export and Generate Skill Files buttons in the team Deploy section with a single "Schedule" button that opens the SchedulePanel directly
+- **Sub-agent visual distinction** — agents nested under other agents (sub-agents) now display with a lighter blue color (`#58a6ff`), "SUB-AGENT" badge, and distinct background tint on the canvas, making the hierarchy visually clear at a glance
+- **Sub-agent badges in inspector** — the agent list inside the team editor now shows "sub-agent" badges (lighter blue) for children of member-agents
+
+### Cleanup
+- Removed standalone "Export" and "Generate Skill Files" buttons from team editor (Deploy already calls `generateTeamSkillFiles` internally)
+- Removed Export/Import buttons and related handlers from the Toolbar
+- Toolbar reverted to clean button set: +, Settings, Schedules, Catalog
+
+---
+
 ## v0.3.4 — February 24, 2026
 
 ### Bug Fixes
