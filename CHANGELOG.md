@@ -1,5 +1,17 @@
 # AUI (Agent UI) — Changelog
 
+## v0.3.7 — February 24, 2026
+
+### Documentation
+- **README overhaul** — rewrote the hero section with a clear value proposition emphasizing token efficiency and zero-overhead deployment
+- **Claude Code URL install** — Quick Start now leads with a one-line paste-the-URL install option for Claude Code users, with manual clone as the alternative
+- **Updated feature sections** — Interactive Org-Chart Canvas and Cron Job Scheduler sections rewritten with accurate details, node type table, and OS-level scheduling docs
+- **Sub-agent documentation** — added sub-agent node type to the canvas feature section with color and badge details
+- **Project structure updated** — added missing files (scheduler.ts, skill-scanner.ts) and reorganized to match the current codebase
+- **Content cleanup** — removed outdated sections and polished overall structure for consistency
+
+---
+
 ## v0.3.6 — February 24, 2026
 
 ### New Features

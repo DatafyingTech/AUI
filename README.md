@@ -6,18 +6,17 @@
 
 # AUI -- Agent UI
 
-**A visual org-chart interface for managing Claude Code agent teams, skills, and configurations.**
+**Stop wasting tokens. Start deploying agents that hit the ground running.**
 
-AUI is a desktop application that gives you a drag-and-drop canvas for designing, configuring, and deploying Claude Code agent teams. Instead of hand-editing YAML files and skill definitions, you build your agent organization visually -- then deploy entire teams with a single click.
+Every token your Claude Code agents spend orienting, discovering context, or figuring out team structure is a token not spent on actual work. AUI is a desktop app that lets you design, prime, and deploy agent teams visually -- so every token goes toward output, not overhead.
 
 ## Why AUI?
 
-Managing Claude Code agent teams through raw config files is slow, error-prone, and lacks visibility into your organization's structure. AUI solves this by giving you:
-
-- **Visual clarity** -- see your entire agent organization at a glance on an interactive canvas
-- **AI-assisted authoring** -- generate descriptions, fill teams, and create goal-aligned agent structures in seconds
-- **One-click deployment** -- go from design to running team session with a single button press
-- **Zero lock-in** -- AUI reads and writes standard Claude Code config files; stop using AUI anytime and your configs still work
+- **Get more from every token** -- organize context, skills, and team structures visually before deploying, so agents start working immediately instead of burning tokens on discovery and setup
+- **Deploy perfectly-primed teams** -- AUI generates a comprehensive primer with full company context, skill files, variables, and coordination rules, then launches your team in a single click
+- **Schedule recurring runs** -- attach cron expressions to any team and let the OS-level task scheduler handle the rest, no babysitting required
+- **Design your org visually** -- map out agent specializations, API connections, and team hierarchies on a drag-and-drop canvas powered by React Flow
+- **Zero lock-in** -- AUI reads and writes standard Claude Code config files; stop using it anytime and everything still works
 
 ---
 
@@ -27,10 +26,6 @@ Managing Claude Code agent teams through raw config files is slow, error-prone, 
 <img width="1909" height="997" alt="3 3131" src="https://github.com/user-attachments/assets/d2d61d82-db38-4dfa-9dc6-e7769aa489f7" />
 <img width="1905" height="997" alt="4 es" src="https://github.com/user-attachments/assets/b04771ad-78d3-4fc6-ab12-42a247223a3e" />
 
-
-
-> *Coming soon -- screenshots of the org-chart canvas, inspector panel, deploy flow, and settings.*
-
 ---
 
 ## Features
@@ -39,14 +34,15 @@ Managing Claude Code agent teams through raw config files is slow, error-prone, 
 
 A full pan/zoom/drag canvas powered by React Flow. Nodes are color-coded by type:
 
-| Node Type | Color   |
-|-----------|---------|
-| Human     | Gold    |
-| Team      | Blue    |
-| Agent     | Orange  |
-| Skill     | Green   |
+| Node Type   | Color      | Badge     |
+|-------------|------------|-----------|
+| You (root)  | Gold       | YOU       |
+| Team        | Blue       | TEAM      |
+| Agent       | Orange     | AGENT     |
+| Sub-Agent   | Light Blue | SUB-AGENT |
+| Skill       | Green      | skill     |
 
-Build your agent hierarchy visually -- drag nodes, rearrange teams, and see the full structure at a glance.
+Build your agent hierarchy visually -- drag nodes, rearrange teams, and see the full structure at a glance. Sub-agents (agents nested under other agents) get a distinct lighter-blue treatment so you can instantly tell depth in the hierarchy. Team groups can be collapsed or expanded on the canvas to manage complexity. Hover over any node to reveal quick actions (add child node, remove from canvas), double-click to open the inspector, or right-click for a context menu with additional operations.
 
 ### Inspector Panel
 
@@ -78,11 +74,11 @@ Deploy an entire team directly from the canvas:
 
 The primer is also saved to `.aui/deploy-primer.md` for reference.
 
-### Skill Export
+### Automatic Skill File Generation
 
-Export teams to fully-detailed `SKILL.md` files. Each export includes:
+When you deploy a team, AUI automatically generates fully-detailed `SKILL.md` files for any team that doesn't already have one (existing skill files are preserved). Each generated file includes:
 
-- Company and human context
+- Company and user context
 - Global and team-scoped skills with inline content
 - Variables tables for teams and agents
 - Detailed agent profiles (model, tools, permissions, sub-agents)
@@ -90,7 +86,14 @@ Export teams to fully-detailed `SKILL.md` files. Each export includes:
 
 ### Cron Job Scheduler
 
-Schedule teams for recurring deployment. Set cron expressions, attach prompts, and manage scheduled jobs -- all stored in `.aui/schedules.json`.
+Schedule teams for automated, recurring deployment using real OS-level tasks:
+
+- **Native scheduling** -- creates Windows Task Scheduler tasks or crontab entries (macOS/Linux), so jobs run even when AUI is closed
+- **Flexible repeat options** -- once, hourly, daily, weekly, or custom cron expressions
+- **Team selector** -- pick any team from your canvas to schedule
+- **Visual job list** -- see all scheduled runs at a glance with toggle on/off and delete controls
+- **Fresh terminal per run** -- each scheduled execution opens a new terminal with the full deployment primer
+- **Persistent** -- schedules survive app restarts; metadata stored in `.aui/schedules.json`, deploy scripts in `.aui/schedules/`
 
 ### Settings Panel
 
@@ -98,6 +101,7 @@ Schedule teams for recurring deployment. Set cron expressions, attach prompts, a
 - Color pickers for team, agent, and accent colors
 - Auto-save toggle
 - Live CSS variable updates for accent theming
+- **Data management** -- export your entire tree to a JSON file or import a previously exported tree to restore or share configurations
 
 ### File Watcher
 
@@ -130,12 +134,11 @@ src/
     inspector/       # InspectorPanel, AgentEditor, GroupEditor, SkillEditor
     context-hub/     # ContextHub menu, FileViewer
     common/          # Toolbar, ValidationBanner, SearchBar
-    chat/            # ChatPanel (Claude CLI integration)
     settings/        # SettingsPanel
     schedule/        # SchedulePanel (cron job manager)
     dialogs/         # CreateNodeDialog, DeleteConfirmDialog
   store/
-    tree-store.ts    # Tree state, node CRUD, deploy, export (Zustand)
+    tree-store.ts    # Tree state, node CRUD, deploy (Zustand)
     ui-store.ts      # UI state -- inspector, multi-select, panels
   services/
     claude-api.ts    # Anthropic Messages API client
@@ -146,6 +149,7 @@ src/
     skill-parser.ts  # Skill file parsing
     skill-scanner.ts # Skill directory scanning
     settings-parser.ts # Settings I/O
+    scheduler.ts     # OS-level task scheduling (schtasks/crontab)
   types/
     aui-node.ts      # Core AuiNode type, NodeVariable
     agent.ts         # Agent configuration types
@@ -164,6 +168,13 @@ src-tauri/           # Rust backend (Tauri commands, capabilities, plugins)
 
 ## Quick Start
 
+**Paste into Claude Code** (fastest):
+```
+https://github.com/DatafyingTech/AUI
+```
+Just paste the repo URL into any Claude Code session -- it will clone, install, and set up the project for you.
+
+**Or clone manually:**
 ```bash
 git clone https://github.com/DatafyingTech/AUI.git
 cd AUI
@@ -171,7 +182,7 @@ pnpm install
 pnpm tauri dev
 ```
 
-That's it -- four commands from clone to running app. See [Prerequisites](#prerequisites) below if you need to set up your environment first.
+That's it -- from clone to running app. See [Prerequisites](#prerequisites) below if you need to set up your environment first.
 
 > **Note:** Running `pnpm dev` starts only the Vite frontend without native Tauri features. For the full experience -- file access, skill deployment, terminal spawning -- use `pnpm tauri dev`.
 
@@ -240,6 +251,7 @@ AUI stores its configuration in a `.aui/` directory at the project root:
 | `.aui/tree.json`         | Tree structure, group metadata, variables |
 | `.aui/deploy-primer.md`  | Last generated deploy primer           |
 | `.aui/schedules.json`    | Cron job definitions                   |
+| `.aui/schedules/`        | Generated deploy scripts for scheduled runs |
 
 Set your Claude API key in the Settings panel (gear icon in the menu) to enable AI-powered features.
 
