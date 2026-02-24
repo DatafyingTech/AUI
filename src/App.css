@@ -1,0 +1,158 @@
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-surface: #0f3460;
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --accent-blue: #4a9eff;
+  --accent-green: #4caf50;
+  --accent-gold: #ffc107;
+  --accent-purple: #9c27b0;
+  --accent-gray: #607d8b;
+  --accent-orange: #ff9800;
+  --border-color: #2a2a4a;
+  --toolbar-height: 48px;
+  --inspector-width: 420px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.toolbar {
+  height: var(--toolbar-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.toolbar h1 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tree-panel {
+  flex: 1;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.inspector-panel {
+  width: var(--inspector-width);
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  padding: 16px;
+  overflow-y: auto;
+  color: var(--text-secondary);
+  transition: width 0.2s ease;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes slideInRight { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-blue);
+}
+
+/* ── MiniMap overrides ──────────────────────────────── */
+.aui-minimap {
+  width: 180px !important;
+  height: 120px !important;
+}
+
+.aui-minimap .react-flow__minimap-mask {
+  rx: 8;
+  ry: 8;
+}
+
+.aui-minimap .react-flow__minimap-node {
+  rx: 3;
+  ry: 3;
+  stroke: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* ── Controls overrides ─────────────────────────────── */
+.aui-controls {
+  border-radius: 10px !important;
+  border: 1px solid rgba(74, 158, 255, 0.12) !important;
+  background: linear-gradient(135deg, rgba(22, 33, 62, 0.95) 0%, rgba(15, 15, 42, 0.95) 100%) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+
+.aui-controls button {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: var(--text-secondary) !important;
+  width: 32px !important;
+  height: 32px !important;
+  transition: background 0.15s, color 0.15s !important;
+}
+
+.aui-controls button:hover {
+  background: rgba(74, 158, 255, 0.12) !important;
+  color: var(--accent-blue) !important;
+}
+
+.aui-controls button:last-child {
+  border-bottom: none !important;
+}
+
+.aui-controls button svg {
+  fill: currentColor !important;
+}
+
+.aui-controls button path {
+  fill: currentColor !important;
+}

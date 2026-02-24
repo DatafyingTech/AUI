@@ -1,0 +1,48 @@
+# ==============================
+# Dependencies
+# ==============================
+node_modules/
+
+# ==============================
+# Build output
+# ==============================
+dist/
+src-tauri/target/
+
+# ==============================
+# Local user config (API keys, settings, tree metadata)
+# ==============================
+.aui/
+
+# ==============================
+# Environment variables
+# ==============================
+.env
+.env.*
+
+# ==============================
+# Logs
+# ==============================
+*.log
+pnpm-debug.log*
+
+# ==============================
+# OS-generated files
+# ==============================
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Editor / IDE config
+# ==============================
+.vscode/
+*.swp
+*~
+
+# ==============================
+# Explicitly tracked (do NOT ignore)
+# ==============================
+# src-tauri/       (Rust source, Cargo.toml, tauri.conf.json)
+# pnpm-lock.yaml   (reproducible builds)
+# CHANGELOG.md
+# README.md

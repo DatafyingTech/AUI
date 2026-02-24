@@ -1,0 +1,47 @@
+import type { AgentConfig } from "./agent";
+import type { SkillConfig } from "./skill";
+import type { SettingsConfig } from "./settings";
+
+export type NodeKind = "human" | "agent" | "skill" | "context" | "settings" | "group";
+
+export interface NodeVariable {
+  name: string;
+  value: string;
+}
+
+export interface AuiNode {
+  id: string;
+  name: string;
+  kind: NodeKind;
+  parentId: string | null;
+  team: string | null;
+  sourcePath: string;
+  config: AgentConfig | SkillConfig | SettingsConfig | null;
+  promptBody: string;
+  tags: string[];
+  lastModified: number;
+  validationErrors: string[];
+  assignedSkills: string[];
+  variables: NodeVariable[];
+  launchPrompt: string;
+}
+
+export interface TreeMetadata {
+  owner: {
+    name: string;
+    description: string;
+  };
+  hierarchy: Record<string, string | null>; // nodeId -> parentId
+  positions: Record<string, { x: number; y: number }>;
+  groups?: Array<{
+    id: string;
+    name: string;
+    description: string;
+    parentId: string | null;
+    team: string | null;
+    assignedSkills: string[];
+    variables: NodeVariable[];
+    launchPrompt: string;
+  }>;
+  lastModified: number;
+}
