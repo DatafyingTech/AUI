@@ -1,5 +1,21 @@
 # AUI (Agent UI) — Changelog
 
+## v0.3.2 — February 24, 2026
+
+### Bug Fixes
+- **Deploy terminal stays open** — fixed PowerShell `-File` flag silently ignoring `-NoExit`, causing the deploy terminal to flash and close. Switched to `-Command` invocation so the terminal persists and shows output/errors.
+- **Assigning skills no longer creates phantom nodes** — fixed bug where assigning a skill to a team or root node created a visible orphan node on the canvas. Skills are now tracked in a lightweight name cache instead of being added as tree nodes.
+
+### Enhancements
+- **Collapsible sections on team editor** — the team/agent inspector now matches the root node's collapsible organization. Deploy stays prominent at the top; Variables, Assigned Skills, Generate with AI, and Agents are each collapsible sections with disclosure triangles and item counts.
+
+### Technical
+- Added `skillNameCache` to tree store for resolving skill display names without adding visible nodes
+- OrgNode skill name resolution now checks: tree nodes → name cache → raw ID fallback
+- Rust `open_terminal` uses `-Command` instead of `-File` on Windows for proper `-NoExit` behavior
+
+---
+
 ## v0.3.1 — February 24, 2026
 
 ### Bug Fixes

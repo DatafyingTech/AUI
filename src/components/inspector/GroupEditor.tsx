@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useCallback, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useCallback, type CSSProperties, type ReactNode } from "react";
 import { readTextFile, writeTextFile, exists, mkdir } from "@tauri-apps/plugin-fs";
+import { invoke } from "@tauri-apps/api/core";
 import { useTreeStore } from "@/store/tree-store";
 import { useUiStore } from "@/store/ui-store";
 import { scanAllSkills, type SkillInfo } from "@/services/skill-scanner";
@@ -54,6 +55,41 @@ const kindBadgeColors: Record<string, string> = {
   human: "var(--accent-gold)",
 };
 
+function CollapsibleSection({
+  title,
+  count,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div
+        onClick={() => setOpen(!open)}
+        style={{
+          ...sectionHeaderStyle,
+          cursor: "pointer",
+          userSelect: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span style={{ fontSize: 10, transition: "transform 0.15s", display: "inline-block", transform: open ? "rotate(90deg)" : "rotate(0)" }}>
+          {"\u25B6"}
+        </span>
+        {title}{count !== undefined ? ` (${count})` : ""}
+      </div>
+      {open && <div style={{ paddingTop: 4 }}>{children}</div>}
+    </div>
+  );
+}
+
 interface GroupEditorProps {
   node: AuiNode;
 }
@@ -66,7 +102,7 @@ export function GroupEditor({ node }: GroupEditorProps) {
   const removeSkillFromNode = useTreeStore((s) => s.removeSkillFromNode);
   const saveTreeMetadata = useTreeStore((s) => s.saveTreeMetadata);
   const createSkillNode = useTreeStore((s) => s.createSkillNode);
-  const addNode = useTreeStore((s) => s.addNode);
+  const cacheSkillName = useTreeStore((s) => s.cacheSkillName);
   const exportTeamAsSkill = useTreeStore((s) => s.exportTeamAsSkill);
   const generateTeamSkillFiles = useTreeStore((s) => s.generateTeamSkillFiles);
   const selectNode = useUiStore((s) => s.selectNode);
@@ -236,28 +272,10 @@ export function GroupEditor({ node }: GroupEditorProps) {
 
   const handleAddSkill = () => {
     if (!addSkillId) return;
-    // Ensure the skill exists in the tree store so OrgNode can display its name
-    if (!nodes.has(addSkillId)) {
-      const match = allSkills.find((s) => s.id === addSkillId);
-      if (match) {
-        const fsMatch = fsSkills.find((f) => f.id === addSkillId);
-        addNode({
-          id: addSkillId,
-          name: match.name,
-          kind: "skill",
-          parentId: "root",
-          team: null,
-          sourcePath: fsMatch?.sourcePath ?? "",
-          config: null,
-          promptBody: match.description,
-          tags: [],
-          lastModified: Date.now(),
-          validationErrors: [],
-          assignedSkills: [],
-          variables: [],
-          launchPrompt: "",
-        });
-      }
+    // Cache the skill name so OrgNode can display it (without adding a visible node)
+    const match = allSkills.find((s) => s.id === addSkillId);
+    if (match) {
+      cacheSkillName(addSkillId, match.name);
     }
     assignSkillToNode(node.id, addSkillId);
     setAddSkillId("");
@@ -495,7 +513,6 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
       // Use Rust-side open_terminal command which uses CREATE_NEW_CONSOLE on Windows
       // to guarantee a visible terminal window (bypasses Tauri's CREATE_NO_WINDOW).
-      const { invoke } = await import("@tauri-apps/api/core");
 
       if (isWindows) {
         const winPrimerPath = primerPath.replace(/\//g, "\\");
@@ -696,10 +713,8 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         </div>
       )}
 
-      {/* Info Section */}
-      <div style={sectionHeaderStyle}>{isMember ? "Agent Info" : "Team Info"}</div>
-
-      <div style={fieldStyle}>
+      {/* Info — Name + Description (always visible) */}
+      <div style={{ marginBottom: 16 }}>
         <label style={labelStyle}>Name</label>
         <input
           style={inputStyle}
@@ -708,7 +723,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         />
       </div>
 
-      <div style={fieldStyle}>
+      <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
           <label style={{ ...labelStyle, marginBottom: 0 }}>Description</label>
           <button
@@ -738,379 +753,366 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         />
       </div>
 
-      {/* Variables Section */}
-      <div style={sectionHeaderStyle}>
-        Variables ({variables.filter((v) => v.name.trim()).length})
-      </div>
+      {/* Variables — collapsible */}
+      <CollapsibleSection title="Variables" count={variables.filter((v) => v.name.trim()).length} defaultOpen={variables.length > 0}>
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
+          Key-value pairs (API keys, URLs, etc.) available to this {isMember ? "agent" : "team"}.
+        </div>
 
-      <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
-        Key-value pairs (API keys, URLs, etc.) available to this {isMember ? "agent" : "team"}.
-      </div>
+        {variables.map((v, i) => (
+          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
+            <input
+              style={{ ...inputStyle, flex: 1 }}
+              placeholder="Name"
+              value={v.name}
+              onChange={(e) => {
+                const next = [...variables];
+                next[i] = { ...next[i], name: e.target.value };
+                setVariables(next);
+              }}
+            />
+            <input
+              style={{ ...inputStyle, flex: 2 }}
+              placeholder="Value"
+              value={v.value}
+              onChange={(e) => {
+                const next = [...variables];
+                next[i] = { ...next[i], value: e.target.value };
+                setVariables(next);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setVariables(variables.filter((_, j) => j !== i))}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                padding: "0 4px",
+                fontSize: 14,
+                lineHeight: 1,
+                flexShrink: 0,
+              }}
+              title="Remove variable"
+            >
+              x
+            </button>
+          </div>
+        ))}
 
-      {variables.map((v, i) => (
-        <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
-          <input
-            style={{ ...inputStyle, flex: 1 }}
-            placeholder="Name"
-            value={v.name}
-            onChange={(e) => {
-              const next = [...variables];
-              next[i] = { ...next[i], name: e.target.value };
-              setVariables(next);
-            }}
-          />
-          <input
-            style={{ ...inputStyle, flex: 2 }}
-            placeholder="Value"
-            value={v.value}
-            onChange={(e) => {
-              const next = [...variables];
-              next[i] = { ...next[i], value: e.target.value };
-              setVariables(next);
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => setVariables(variables.filter((_, j) => j !== i))}
+        <button
+          onClick={() => setVariables([...variables, { name: "", value: "" }])}
+          style={{
+            width: "100%",
+            padding: "6px 12px",
+            background: "transparent",
+            color: "var(--accent-purple)",
+            border: "1px dashed var(--accent-purple)",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontSize: 11,
+            fontWeight: 600,
+          }}
+        >
+          + Add Variable
+        </button>
+      </CollapsibleSection>
+
+      {/* Assigned Skills — collapsible */}
+      <CollapsibleSection title="Assigned Skills" count={assignedSkills.length} defaultOpen={assignedSkills.length > 0}>
+        {assignedSkills.length === 0 && (
+          <div
             style={{
-              background: "none",
-              border: "none",
               color: "var(--text-secondary)",
-              cursor: "pointer",
-              padding: "0 4px",
-              fontSize: 14,
-              lineHeight: 1,
-              flexShrink: 0,
+              fontSize: 12,
+              marginBottom: 12,
+              fontStyle: "italic",
             }}
-            title="Remove variable"
           >
-            x
+            No skills assigned
+          </div>
+        )}
+
+        {assignedSkills.map((skill) => (
+          <div
+            key={skill.id}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              padding: "6px 8px",
+              background: "rgba(63, 185, 80, 0.05)",
+              border: "1px solid var(--border-color)",
+              borderRadius: 4,
+              marginBottom: 4,
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: "var(--text-primary)" }}>
+                {skill.name}
+              </div>
+              {skill.description && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text-secondary)",
+                    marginTop: 2,
+                    lineHeight: 1.3,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {skill.description}
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => handleRemoveSkill(skill.id)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                padding: "0 4px",
+                fontSize: 14,
+                lineHeight: 1,
+                flexShrink: 0,
+                marginTop: 2,
+              }}
+              title="Remove skill"
+            >
+              x
+            </button>
+          </div>
+        ))}
+
+        <div style={{ display: "flex", gap: 6, marginTop: 6, marginBottom: 6 }}>
+          <select
+            style={{ ...inputStyle, flex: 1 }}
+            value={addSkillId}
+            onChange={(e) => {
+              if (e.target.value === "__create_new__") {
+                setShowCreateForm(true);
+                setAddSkillId("");
+              } else {
+                setAddSkillId(e.target.value);
+                setShowCreateForm(false);
+              }
+            }}
+          >
+            <option value="">Select a skill...</option>
+            <option value="__create_new__" style={{ fontWeight: 600 }}>
+              + Create New Skill...
+            </option>
+            {availableSkills.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}{s.description ? ` — ${s.description.slice(0, 60)}` : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleAddSkill}
+            disabled={!addSkillId}
+            style={{
+              padding: "8px 12px",
+              background: addSkillId
+                ? "var(--accent-green)"
+                : "var(--border-color)",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              cursor: addSkillId ? "pointer" : "default",
+              fontSize: 12,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              opacity: addSkillId ? 1 : 0.5,
+            }}
+          >
+            Add
           </button>
         </div>
-      ))}
 
-      <button
-        onClick={() => setVariables([...variables, { name: "", value: "" }])}
-        style={{
-          width: "100%",
-          padding: "6px 12px",
-          marginBottom: 8,
-          background: "transparent",
-          color: "var(--accent-purple)",
-          border: "1px dashed var(--accent-purple)",
-          borderRadius: 4,
-          cursor: "pointer",
-          fontSize: 11,
-          fontWeight: 600,
-        }}
-      >
-        + Add Variable
-      </button>
-
-      {/* Assigned Skills Section */}
-      <div style={sectionHeaderStyle}>
-        Assigned Skills ({assignedSkills.length})
-      </div>
-
-      {assignedSkills.length === 0 && (
-        <div
-          style={{
-            color: "var(--text-secondary)",
-            fontSize: 12,
-            marginBottom: 12,
-            fontStyle: "italic",
-          }}
-        >
-          No skills assigned
-        </div>
-      )}
-
-      {assignedSkills.map((skill) => (
-        <div
-          key={skill.id}
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            padding: "6px 8px",
-            background: "rgba(74, 158, 255, 0.05)",
-            border: "1px solid var(--border-color)",
-            borderRadius: 4,
-            marginBottom: 4,
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, color: "var(--text-primary)" }}>
-              {skill.name}
+        {showCreateForm && (
+          <div
+            style={{
+              padding: 10,
+              background: "#1a1a2e",
+              border: "1px solid var(--accent-green)",
+              borderRadius: 6,
+              marginBottom: 4,
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-green)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Create New Skill
             </div>
-            {skill.description && (
-              <div
+            <input
+              style={{ ...inputStyle, marginBottom: 6 }}
+              placeholder="Skill name (e.g. deploy-app)"
+              value={newSkillName}
+              onChange={(e) => setNewSkillName(e.target.value)}
+            />
+            <textarea
+              style={{ ...inputStyle, resize: "vertical", marginBottom: 8 }}
+              rows={2}
+              placeholder="Short description..."
+              value={newSkillDesc}
+              onChange={(e) => setNewSkillDesc(e.target.value)}
+            />
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                onClick={handleCreateSkill}
+                disabled={!newSkillName.trim() || creating}
                 style={{
-                  fontSize: 11,
-                  color: "var(--text-secondary)",
-                  marginTop: 2,
-                  lineHeight: 1.3,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  flex: 1,
+                  padding: "6px 12px",
+                  background: newSkillName.trim() && !creating ? "var(--accent-green)" : "var(--border-color)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 4,
+                  cursor: newSkillName.trim() && !creating ? "pointer" : "default",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  opacity: newSkillName.trim() && !creating ? 1 : 0.5,
                 }}
               >
-                {skill.description}
-              </div>
-            )}
+                {creating ? "Creating..." : "Create & Assign"}
+              </button>
+              <button
+                onClick={() => { setShowCreateForm(false); setNewSkillName(""); setNewSkillDesc(""); }}
+                style={{
+                  padding: "6px 12px",
+                  background: "transparent",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Generate with AI — collapsible */}
+      <CollapsibleSection title="Generate with AI" defaultOpen={false}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "flex-end" }}>
+          <div style={{ width: 70 }}>
+            <label style={{ ...labelStyle, fontSize: 10 }}>Count</label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={autoFillCount}
+              onChange={(e) => setAutoFillCount(Math.max(1, Math.min(10, Number(e.target.value))))}
+              style={{ ...inputStyle, textAlign: "center" }}
+            />
           </div>
           <button
-            type="button"
-            onClick={() => handleRemoveSkill(skill.id)}
+            onClick={handleAutoFillAgents}
+            disabled={autoFilling || !name.trim()}
             style={{
-              background: "none",
+              flex: 1,
+              padding: "8px 12px",
+              background: autoFilling ? "var(--border-color)" : "var(--accent-purple)",
+              color: "white",
               border: "none",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-              padding: "0 4px",
-              fontSize: 14,
-              lineHeight: 1,
-              flexShrink: 0,
-              marginTop: 2,
+              borderRadius: 6,
+              cursor: autoFilling || !name.trim() ? "default" : "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              opacity: autoFilling || !name.trim() ? 0.5 : 1,
+              transition: "opacity 0.15s",
             }}
-            title="Remove skill"
           >
-            x
+            {autoFilling ? "Generating..." : "Generate Agents"}
           </button>
         </div>
-      ))}
+      </CollapsibleSection>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          marginTop: 8,
-          marginBottom: 8,
-        }}
-      >
-        <select
-          style={{ ...inputStyle, flex: 1 }}
-          value={addSkillId}
-          onChange={(e) => {
-            if (e.target.value === "__create_new__") {
-              setShowCreateForm(true);
-              setAddSkillId("");
-            } else {
-              setAddSkillId(e.target.value);
-              setShowCreateForm(false);
-            }
-          }}
-        >
-          <option value="">Select a skill...</option>
-          <option value="__create_new__" style={{ fontWeight: 600 }}>
-            + Create New Skill...
-          </option>
-          {availableSkills.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}{s.description ? ` — ${s.description.slice(0, 60)}` : ""}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={handleAddSkill}
-          disabled={!addSkillId}
-          style={{
-            padding: "8px 12px",
-            background: addSkillId
-              ? "var(--accent-green)"
-              : "var(--border-color)",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: addSkillId ? "pointer" : "default",
-            fontSize: 12,
-            fontWeight: 600,
-            whiteSpace: "nowrap",
-            opacity: addSkillId ? 1 : 0.5,
-          }}
-        >
-          Add
-        </button>
-      </div>
-
-      {showCreateForm && (
-        <div
-          style={{
-            padding: 10,
-            background: "#1a1a2e",
-            border: "1px solid var(--accent-green)",
-            borderRadius: 6,
-            marginBottom: 8,
-          }}
-        >
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-green)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            Create New Skill
-          </div>
-          <input
-            style={{ ...inputStyle, marginBottom: 6 }}
-            placeholder="Skill name (e.g. deploy-app)"
-            value={newSkillName}
-            onChange={(e) => setNewSkillName(e.target.value)}
-          />
-          <textarea
-            style={{ ...inputStyle, resize: "vertical", marginBottom: 8 }}
-            rows={2}
-            placeholder="Short description..."
-            value={newSkillDesc}
-            onChange={(e) => setNewSkillDesc(e.target.value)}
-          />
-          <div style={{ display: "flex", gap: 6 }}>
-            <button
-              onClick={handleCreateSkill}
-              disabled={!newSkillName.trim() || creating}
-              style={{
-                flex: 1,
-                padding: "6px 12px",
-                background: newSkillName.trim() && !creating ? "var(--accent-green)" : "var(--border-color)",
-                color: "white",
-                border: "none",
-                borderRadius: 4,
-                cursor: newSkillName.trim() && !creating ? "pointer" : "default",
-                fontSize: 12,
-                fontWeight: 600,
-                opacity: newSkillName.trim() && !creating ? 1 : 0.5,
-              }}
-            >
-              {creating ? "Creating..." : "Create & Assign"}
-            </button>
-            <button
-              onClick={() => { setShowCreateForm(false); setNewSkillName(""); setNewSkillDesc(""); }}
-              style={{
-                padding: "6px 12px",
-                background: "transparent",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--border-color)",
-                borderRadius: 4,
-                cursor: "pointer",
-                fontSize: 12,
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Generate agents with AI */}
-      <div style={sectionHeaderStyle}>Generate with AI</div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "flex-end" }}>
-        <div style={{ width: 70 }}>
-          <label style={{ ...labelStyle, fontSize: 10 }}>Count</label>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={autoFillCount}
-            onChange={(e) => setAutoFillCount(Math.max(1, Math.min(10, Number(e.target.value))))}
-            style={{ ...inputStyle, textAlign: "center" }}
-          />
-        </div>
-        <button
-          onClick={handleAutoFillAgents}
-          disabled={autoFilling || !name.trim()}
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            background: autoFilling ? "var(--border-color)" : "var(--accent-purple)",
-            color: "white",
-            border: "none",
-            borderRadius: 6,
-            cursor: autoFilling || !name.trim() ? "default" : "pointer",
-            fontSize: 12,
-            fontWeight: 600,
-            opacity: autoFilling || !name.trim() ? 0.5 : 1,
-            transition: "opacity 0.15s",
-          }}
-        >
-          {autoFilling ? "Generating..." : "Generate Agents"}
-        </button>
-      </div>
-
-      {/* Team Agents Section */}
-      <div style={sectionHeaderStyle}>
-        Agents ({children.length})
-      </div>
-
-      {children.length === 0 && (
-        <div
-          style={{
-            color: "var(--text-secondary)",
-            fontSize: 12,
-            marginBottom: 12,
-            fontStyle: "italic",
-          }}
-        >
-          No agents yet
-        </div>
-      )}
-
-      {children.map((child) => (
-        <div
-          key={child.id}
-          onClick={() => selectNode(child.id)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "6px 8px",
-            background: "rgba(74, 158, 255, 0.05)",
-            border: "1px solid var(--border-color)",
-            borderRadius: 4,
-            marginBottom: 4,
-            cursor: "pointer",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLDivElement).style.background =
-              "rgba(74, 158, 255, 0.12)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLDivElement).style.background =
-              "rgba(74, 158, 255, 0.05)";
-          }}
-        >
-          <span
+      {/* Agents — collapsible */}
+      <CollapsibleSection title="Agents" count={children.length}>
+        {children.length === 0 && (
+          <div
             style={{
-              display: "inline-block",
-              padding: "1px 6px",
-              borderRadius: 8,
-              fontSize: 10,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              color: "white",
-              background: kindBadgeColors[child.kind] ?? "var(--text-secondary)",
+              color: "var(--text-secondary)",
+              fontSize: 12,
+              marginBottom: 12,
+              fontStyle: "italic",
             }}
           >
-            {child.kind}
-          </span>
-          <span style={{ fontSize: 13, color: "var(--text-primary)" }}>
-            {child.name}
-          </span>
-        </div>
-      ))}
+            No agents yet
+          </div>
+        )}
 
-      <button
-        onClick={() => openCreateDialog(node.id)}
-        style={{
-          width: "100%",
-          padding: "8px 12px",
-          marginTop: 8,
-          background: "transparent",
-          color: "var(--accent-blue)",
-          border: "1px dashed var(--accent-blue)",
-          borderRadius: 4,
-          cursor: "pointer",
-          fontSize: 12,
-          fontWeight: 600,
-        }}
-      >
-        + Add Agent
-      </button>
+        {children.map((child) => (
+          <div
+            key={child.id}
+            onClick={() => selectNode(child.id)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 8px",
+              background: "rgba(74, 158, 255, 0.05)",
+              border: "1px solid var(--border-color)",
+              borderRadius: 4,
+              marginBottom: 4,
+              cursor: "pointer",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLDivElement).style.background =
+                "rgba(74, 158, 255, 0.12)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLDivElement).style.background =
+                "rgba(74, 158, 255, 0.05)";
+            }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                padding: "1px 6px",
+                borderRadius: 8,
+                fontSize: 10,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                color: "white",
+                background: kindBadgeColors[child.kind] ?? "var(--text-secondary)",
+              }}
+            >
+              {child.kind}
+            </span>
+            <span style={{ fontSize: 13, color: "var(--text-primary)" }}>
+              {child.name}
+            </span>
+          </div>
+        ))}
+
+        <button
+          onClick={() => openCreateDialog(node.id)}
+          style={{
+            width: "100%",
+            padding: "8px 12px",
+            marginTop: 6,
+            background: "transparent",
+            color: "var(--accent-blue)",
+            border: "1px dashed var(--accent-blue)",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          + Add Agent
+        </button>
+      </CollapsibleSection>
 
       {/* Action Buttons */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 24 }}>
@@ -1159,7 +1161,6 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         )}
       </div>
 
-      {/* Deploy section moved to top of editor */}
     </div>
   );
 }

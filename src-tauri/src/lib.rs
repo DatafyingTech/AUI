@@ -10,13 +10,14 @@ fn open_terminal(script_path: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+        let cmd_arg = format!("& '{}'", script_path.replace('\'', "''"));
         StdCommand::new("powershell.exe")
             .args(&[
                 "-NoExit",
                 "-ExecutionPolicy",
                 "Bypass",
-                "-File",
-                &script_path,
+                "-Command",
+                &cmd_arg,
             ])
             .creation_flags(CREATE_NEW_CONSOLE)
             .spawn()

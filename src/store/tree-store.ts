@@ -11,6 +11,7 @@ import { detectTeam } from "@/utils/grouping";
 
 interface TreeState {
   nodes: Map<string, AuiNode>;
+  skillNameCache: Map<string, string>;
   rootId: string | null;
   projectPath: string | null;
   loading: boolean;
@@ -31,6 +32,7 @@ interface TreeActions {
   createAgentNode(name: string, description: string, parentId?: string): Promise<void>;
   createSkillNode(name: string, description: string, parentId?: string): Promise<void>;
   createGroupNode(name: string, description: string, parentId?: string): void;
+  cacheSkillName(id: string, name: string): void;
   assignSkillToNode(nodeId: string, skillId: string): void;
   removeSkillFromNode(nodeId: string, skillId: string): void;
   deleteNodeFromDisk(id: string): Promise<void>;
@@ -111,6 +113,7 @@ async function parseFile(
 
 export const useTreeStore = create<TreeStore>()((set, get) => ({
   nodes: new Map(),
+  skillNameCache: new Map(),
   rootId: null,
   projectPath: null,
   loading: false,
@@ -440,6 +443,14 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     });
 
     get().saveTreeMetadata();
+  },
+
+  cacheSkillName(id: string, name: string) {
+    set((state) => {
+      const next = new Map(state.skillNameCache);
+      next.set(id, name);
+      return { skillNameCache: next };
+    });
   },
 
   assignSkillToNode(nodeId: string, skillId: string) {

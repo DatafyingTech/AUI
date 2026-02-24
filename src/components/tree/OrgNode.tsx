@@ -41,12 +41,18 @@ function OrgNodeInner({ data, selected }: NodeProps) {
   // Team nodes = blue, agents-in-teams = orange
   const color = isMember ? "#f0883e" : KIND_COLORS[node.kind];
 
-  // Resolve assigned skill names
+  // Resolve assigned skill names (tree node → name cache → raw ID)
+  const skillNameCache = useTreeStore((s) => s.skillNameCache);
   const skillNames: string[] = [];
   if (node.assignedSkills.length > 0) {
     for (const skillId of node.assignedSkills) {
       const skillNode = allNodes.get(skillId);
-      skillNames.push(skillNode ? skillNode.name : skillId);
+      if (skillNode) {
+        skillNames.push(skillNode.name);
+      } else {
+        const cached = skillNameCache.get(skillId);
+        skillNames.push(cached ?? skillId);
+      }
     }
   }
 

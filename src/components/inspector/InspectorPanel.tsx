@@ -313,7 +313,7 @@ function RootEditor({ node }: { node: AuiNode }) {
   const updateNode = useTreeStore((s) => s.updateNode);
   const nodes = useTreeStore((s) => s.nodes);
   const projectPath = useTreeStore((s) => s.projectPath);
-  const addNodeToTree = useTreeStore((s) => s.addNode);
+  const cacheSkillName = useTreeStore((s) => s.cacheSkillName);
   const assignSkillToNode = useTreeStore((s) => s.assignSkillToNode);
   const removeSkillFromNode = useTreeStore((s) => s.removeSkillFromNode);
   const saveTreeMetadata = useTreeStore((s) => s.saveTreeMetadata);
@@ -545,28 +545,10 @@ Make team and agent names descriptive and specific. Use title case for names. Ea
 
   const handleAddSkill = () => {
     if (!addSkillId) return;
-    // Ensure the skill exists in the tree store so OrgNode can display its name
-    if (!nodes.has(addSkillId)) {
-      const match = allSkills.find((s) => s.id === addSkillId);
-      if (match) {
-        const fsMatch = fsSkills.find((f) => f.id === addSkillId);
-        addNodeToTree({
-          id: addSkillId,
-          name: match.name,
-          kind: "skill",
-          parentId: "root",
-          team: null,
-          sourcePath: fsMatch?.sourcePath ?? "",
-          config: null,
-          promptBody: match.description,
-          tags: [],
-          lastModified: Date.now(),
-          validationErrors: [],
-          assignedSkills: [],
-          variables: [],
-          launchPrompt: "",
-        });
-      }
+    // Cache the skill name so OrgNode can display it (without adding a visible node)
+    const match = allSkills.find((s) => s.id === addSkillId);
+    if (match) {
+      cacheSkillName(addSkillId, match.name);
     }
     assignSkillToNode(node.id, addSkillId);
     setAddSkillId("");
