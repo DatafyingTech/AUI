@@ -1,8 +1,23 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Built with Tauri](https://img.shields.io/badge/Built_with-Tauri_v2-blue?logo=tauri)](https://v2.tauri.app/)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Claude AI](https://img.shields.io/badge/Powered_by-Claude_AI-6B4FBB)](https://www.anthropic.com/claude)
+
 # AUI -- Agent UI
 
 **A visual org-chart interface for managing Claude Code agent teams, skills, and configurations.**
 
 AUI is a desktop application that gives you a drag-and-drop canvas for designing, configuring, and deploying Claude Code agent teams. Instead of hand-editing YAML files and skill definitions, you build your agent organization visually -- then deploy entire teams with a single click.
+
+## Why AUI?
+
+Managing Claude Code agent teams through raw config files is slow, error-prone, and lacks visibility into your organization's structure. AUI solves this by giving you:
+
+- **Visual clarity** -- see your entire agent organization at a glance on an interactive canvas
+- **AI-assisted authoring** -- generate descriptions, fill teams, and create goal-aligned agent structures in seconds
+- **One-click deployment** -- go from design to running team session with a single button press
+- **Zero lock-in** -- AUI reads and writes standard Claude Code config files; stop using AUI anytime and your configs still work
 
 ---
 
@@ -153,8 +168,8 @@ src-tauri/           # Rust backend (Tauri commands, capabilities, plugins)
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/aui.git
-cd aui
+git clone https://github.com/DatafyingTech/AUI.git
+cd AUI
 
 # Install dependencies
 pnpm install
@@ -234,3 +249,15 @@ The Tauri dev server runs the Vite frontend at `http://localhost:5173` and wraps
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/) -- VS Code's editor component
 - [Vite](https://vite.dev/) -- fast frontend tooling
 - [Claude](https://www.anthropic.com/claude) by Anthropic -- AI-powered features
+
+---
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## Star History
+
+If AUI helps you manage your Claude Code agents, consider giving it a star -- it helps others discover the project.
