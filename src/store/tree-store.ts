@@ -8,6 +8,13 @@ import { parseSettingsFile } from "@/services/settings-parser";
 import { writeNodeFile } from "@/services/file-writer";
 import { join, normalizePath, getFileName, generateNodeId, titleCase } from "@/utils/paths";
 import { detectTeam } from "@/utils/grouping";
+import {
+  loadLayoutIndex,
+  saveLayoutIndex,
+  saveLayout,
+  loadLayout,
+  deleteLayout as deleteLayoutFile,
+} from "@/services/layout-service";
 
 interface TreeState {
   nodes: Map<string, AuiNode>;
@@ -17,6 +24,8 @@ interface TreeState {
   loading: boolean;
   error: string | null;
   metadata: TreeMetadata | null;
+  currentLayoutId: string | null;
+  layouts: Array<{ id: string; name: string; lastModified: number }>;
 }
 
 interface TreeActions {
@@ -43,6 +52,11 @@ interface TreeActions {
   exportTreeAsJson(): string;
   importTreeFromJson(json: string): void;
   autoGroupByPrefix(): void;
+  loadLayouts(): Promise<void>;
+  saveCurrentAsLayout(name: string): Promise<string>;
+  switchLayout(layoutId: string): Promise<void>;
+  deleteLayout(layoutId: string): Promise<void>;
+  renameLayout(layoutId: string, newName: string): Promise<void>;
 }
 
 type TreeStore = TreeState & TreeActions;
@@ -122,6 +136,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   loading: false,
   error: null,
   metadata: null,
+  currentLayoutId: null,
+  layouts: [],
 
   async loadProject(path: string) {
     set({ loading: true, error: null });
@@ -189,6 +205,9 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         metadata,
         loading: false,
       });
+
+      // Load saved layouts after the tree is fully loaded
+      await get().loadLayouts();
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : "Failed to load project",
@@ -1364,5 +1383,186 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       }
       return { nodes: next };
     });
+  },
+
+  async loadLayouts() {
+    const { projectPath } = get();
+    if (!projectPath) return;
+
+    const index = await loadLayoutIndex(projectPath);
+    if (index) {
+      set({
+        layouts: index.layouts,
+        currentLayoutId: index.activeLayoutId,
+      });
+    } else {
+      // No index exists — create a default layout from the current tree.json
+      const defaultId = `layout-${Date.now()}`;
+      await get().saveTreeMetadata();
+      const { metadata } = get();
+      if (metadata) {
+        await saveLayout(projectPath, defaultId, metadata);
+      }
+      const newIndex = {
+        activeLayoutId: defaultId,
+        layouts: [{ id: defaultId, name: "Default", lastModified: Date.now() }],
+      };
+      await saveLayoutIndex(projectPath, newIndex);
+      set({
+        layouts: newIndex.layouts,
+        currentLayoutId: defaultId,
+      });
+    }
+  },
+
+  async saveCurrentAsLayout(name: string): Promise<string> {
+    const { projectPath } = get();
+    if (!projectPath) throw new Error("No project loaded");
+
+    const layoutId = `layout-${Date.now()}`;
+
+    // Save current tree state first
+    await get().saveTreeMetadata();
+    const { metadata } = get();
+    if (!metadata) throw new Error("No metadata to save");
+
+    // Save the metadata as a layout file
+    await saveLayout(projectPath, layoutId, metadata);
+
+    // Update the index
+    const { layouts } = get();
+    const newEntry = { id: layoutId, name, lastModified: Date.now() };
+    const updatedLayouts = [...layouts, newEntry];
+    await saveLayoutIndex(projectPath, {
+      activeLayoutId: layoutId,
+      layouts: updatedLayouts,
+    });
+
+    set({
+      layouts: updatedLayouts,
+      currentLayoutId: layoutId,
+    });
+
+    return layoutId;
+  },
+
+  async switchLayout(layoutId: string) {
+    const { projectPath, currentLayoutId } = get();
+    if (!projectPath) return;
+    if (layoutId === currentLayoutId) return;
+
+    // a. Save current tree state to the current layout file
+    await get().saveTreeMetadata();
+    const { metadata: currentMeta } = get();
+    if (currentMeta && currentLayoutId) {
+      await saveLayout(projectPath, currentLayoutId, currentMeta);
+    }
+
+    // b. Load the target layout's TreeMetadata
+    const targetMeta = await loadLayout(projectPath, layoutId);
+    if (!targetMeta) {
+      set({ error: `Layout ${layoutId} not found` });
+      return;
+    }
+
+    // c. Reconstruct the node map: start with file-based nodes from the current scan,
+    //    then apply the layout's hierarchy and groups.
+    //    File-based nodes (agents, skills, context) stay the same — only grouping changes.
+    const { nodes: currentNodes } = get();
+    const next = new Map<string, AuiNode>();
+
+    // Keep the root node
+    const root = currentNodes.get("root");
+    if (root) {
+      // Update root with the target layout's owner info
+      next.set("root", {
+        ...root,
+        name: targetMeta.owner?.name ?? root.name,
+      });
+    }
+
+    // Copy all file-based nodes (non-group), applying the target layout's hierarchy
+    for (const [id, node] of currentNodes) {
+      if (id === "root") continue;
+      if (node.kind === "group") continue; // Groups come from the layout
+
+      const newParentId = targetMeta.hierarchy[id] !== undefined
+        ? targetMeta.hierarchy[id]
+        : node.parentId;
+      next.set(id, { ...node, parentId: newParentId });
+    }
+
+    // Restore group nodes from the target layout
+    if (targetMeta.groups) {
+      for (const g of targetMeta.groups) {
+        next.set(g.id, {
+          id: g.id,
+          name: g.name,
+          kind: "group",
+          parentId: g.parentId,
+          team: g.team,
+          sourcePath: "",
+          config: null,
+          promptBody: g.description,
+          tags: [],
+          lastModified: Date.now(),
+          validationErrors: [],
+          assignedSkills: g.assignedSkills ?? [],
+          variables: g.variables ?? [],
+          launchPrompt: g.launchPrompt ?? "",
+        });
+      }
+    }
+
+    // d. Update state
+    const { layouts } = get();
+    const updatedLayouts = layouts.map((l) =>
+      l.id === currentLayoutId ? { ...l, lastModified: Date.now() } : l,
+    );
+    await saveLayoutIndex(projectPath, {
+      activeLayoutId: layoutId,
+      layouts: updatedLayouts,
+    });
+
+    set({
+      nodes: next,
+      currentLayoutId: layoutId,
+      metadata: targetMeta,
+      layouts: updatedLayouts,
+    });
+  },
+
+  async deleteLayout(layoutId: string) {
+    const { projectPath, currentLayoutId, layouts } = get();
+    if (!projectPath) return;
+
+    // Can't delete the active layout
+    if (layoutId === currentLayoutId) return;
+
+    await deleteLayoutFile(projectPath, layoutId);
+
+    const updatedLayouts = layouts.filter((l) => l.id !== layoutId);
+    await saveLayoutIndex(projectPath, {
+      activeLayoutId: currentLayoutId!,
+      layouts: updatedLayouts,
+    });
+
+    set({ layouts: updatedLayouts });
+  },
+
+  async renameLayout(layoutId: string, newName: string) {
+    const { projectPath, currentLayoutId, layouts } = get();
+    if (!projectPath) return;
+
+    const updatedLayouts = layouts.map((l) =>
+      l.id === layoutId ? { ...l, name: newName, lastModified: Date.now() } : l,
+    );
+
+    await saveLayoutIndex(projectPath, {
+      activeLayoutId: currentLayoutId!,
+      layouts: updatedLayouts,
+    });
+
+    set({ layouts: updatedLayouts });
   },
 }));

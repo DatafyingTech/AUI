@@ -66,3 +66,20 @@ export interface TreeMetadata {
   }>;
   lastModified: number;
 }
+
+export interface Layout {
+  id: string;
+  name: string;
+  createdAt: number;
+  lastModified: number;
+  treeData: TreeMetadata;
+}
+
+export interface LayoutIndex {
+  activeLayoutId: string;
+  layouts: Array<{
+    id: string;
+    name: string;
+    lastModified: number;
+  }>;
+}

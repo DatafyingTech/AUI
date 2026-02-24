@@ -1,5 +1,6 @@
 import { useTreeStore } from "@/store/tree-store";
 import { useUiStore } from "@/store/ui-store";
+import { LayoutsDropdown } from "./LayoutsDropdown";
 
 const buttonStyle: React.CSSProperties = {
   padding: "6px 12px",
@@ -83,23 +84,20 @@ export function Toolbar() {
         </span>
       </div>
 
-      {/* Right: action buttons */}
-      <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+      {/* Center: create + layouts */}
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <ToolbarButton
           label="+"
           onClick={() => useUiStore.getState().openCreateDialog()}
         />
-        <ToolbarButton label="Settings" onClick={toggleSettings} />
-        <ToolbarButton label="Schedules" onClick={toggleSchedule} />
-        <div
-          style={{
-            width: 1,
-            height: 20,
-            background: "var(--border-color)",
-            margin: "0 4px",
-          }}
-        />
+        <LayoutsDropdown />
+      </div>
+
+      {/* Right: action buttons + node count */}
+      <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
         <ToolbarButton label="Catalog" onClick={toggleContextHub} />
+        <ToolbarButton label="Schedules" onClick={toggleSchedule} />
+        <ToolbarButton label="Settings" onClick={toggleSettings} />
         <span
           style={{
             fontSize: 11,

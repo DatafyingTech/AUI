@@ -1,5 +1,25 @@
 # AUI (Agent UI) — Changelog
 
+## v0.3.8 — February 24, 2026
+
+### New Features
+- **Multiple layouts** — save, switch, rename, and delete named canvas layouts. Each layout preserves the full tree hierarchy, groups, and node positions independently
+- **Layouts dropdown in toolbar** — a new dropdown in the toolbar center lets you switch between saved layouts, create new ones with a name input, rename via inline editing, and delete layouts on hover
+- **Layout persistence** — layout data stored as individual JSON files in `.aui/layouts/` with an `index.json` manifest tracking the active layout and metadata
+- **Auto-default layout** — on first load, the current tree state is automatically saved as a "Default" layout so the system is always initialized
+
+### Enhancements
+- **Toolbar button reorder** — right-side buttons now read Catalog, Schedules, Settings (left to right) for better workflow priority. Create (+) and Layouts dropdown are centered
+
+### Technical
+- New `Layout` and `LayoutIndex` types in `src/types/aui-node.ts`
+- New `src/services/layout-service.ts` — full CRUD for layout files via `@tauri-apps/plugin-fs`
+- New `src/components/common/LayoutsDropdown.tsx` — dropdown UI with rename, delete, and save-as-new
+- Tree store extended with `loadLayouts`, `saveCurrentAsLayout`, `switchLayout`, `deleteLayout`, `renameLayout` actions
+- Layout switching auto-saves the current layout before restoring the target layout's tree metadata
+
+---
+
 ## v0.3.7 — February 24, 2026
 
 ### Documentation
