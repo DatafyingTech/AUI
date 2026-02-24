@@ -22,13 +22,10 @@ Managing Claude Code agent teams through raw config files is slow, error-prone, 
 ---
 
 ## Screenshots
-<img width="1497" height="1000" alt="Screenshot 2026-02-24 071856" src="https://github.com/user-attachments/assets/092e1b85-91e3-4a59-bf27-73a0c4c4eadb" />
-
-<img width="1911" height="1003" alt="Screenshot 2026-02-24 072013" src="https://github.com/user-attachments/assets/7ad28759-19c9-41c6-a26b-f2ff293c5ef8" />
-
-<img width="1908" height="998" alt="aui" src="https://github.com/user-attachments/assets/4cb9f2f3-127e-4361-b32f-002998e2eef8" />
-
-<img width="470" height="951" alt="aui2" src="https://github.com/user-attachments/assets/e72df814-8e7b-4ca4-b02b-5bb891177f3a" />
+<img width="1914" height="1000" alt="Screenshot 2026-02-24 125817" src="https://github.com/user-attachments/assets/6086b73d-632a-4381-8277-d87328460009" />
+<img width="1913" height="1002" alt="223121" src="https://github.com/user-attachments/assets/a08f368e-84fc-498d-8be3-02135d0526d3" />
+<img width="1909" height="997" alt="3 3131" src="https://github.com/user-attachments/assets/d2d61d82-db38-4dfa-9dc6-e7769aa489f7" />
+<img width="1905" height="997" alt="4 es" src="https://github.com/user-attachments/assets/b04771ad-78d3-4fc6-ab12-42a247223a3e" />
 
 
 
