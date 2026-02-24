@@ -23,10 +23,10 @@ Managing Claude Code agent teams through raw config files is slow, error-prone, 
 
 ## Screenshots
 
-https://i.imgur.com/A1NUAHJ.png
-https://i.imgur.com/kemZGqq.png
+<img width="1908" height="998" alt="aui" src="https://github.com/user-attachments/assets/4cb9f2f3-127e-4361-b32f-002998e2eef8" />
 
-[img]https://i.imgur.com/kemZGqq.png[/img]
+<img width="470" height="951" alt="aui2" src="https://github.com/user-attachments/assets/e72df814-8e7b-4ca4-b02b-5bb891177f3a" />
+
 
 > *Coming soon -- screenshots of the org-chart canvas, inspector panel, deploy flow, and settings.*
 
