@@ -25,6 +25,7 @@ Every token your Claude Code agents spend orienting, discovering context, or fig
 <img width="1913" height="1002" alt="223121" src="https://github.com/user-attachments/assets/a08f368e-84fc-498d-8be3-02135d0526d3" />
 <img width="1909" height="997" alt="3 3131" src="https://github.com/user-attachments/assets/d2d61d82-db38-4dfa-9dc6-e7769aa489f7" />
 <img width="1905" height="997" alt="4 es" src="https://github.com/user-attachments/assets/b04771ad-78d3-4fc6-ab12-42a247223a3e" />
+<img width="1907" height="998" alt="Screenshot 2026-02-24 161224" src="https://github.com/user-attachments/assets/3c4cef4a-14bd-4fd6-975d-07584b3e1a01" />
 
 ---
 
