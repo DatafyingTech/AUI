@@ -9,17 +9,17 @@ use std::os::windows::process::CommandExt;
 fn open_terminal(script_path: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        const CREATE_NEW_CONSOLE: u32 = 0x00000010;
-        let cmd_arg = format!("& '{}'", script_path.replace('\'', "''"));
-        StdCommand::new("powershell.exe")
-            .args(&[
-                "-NoExit",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-Command",
-                &cmd_arg,
-            ])
-            .creation_flags(CREATE_NEW_CONSOLE)
+        // Use `cmd /c start` to launch PowerShell as a fully independent process.
+        // Direct spawning via CREATE_NEW_CONSOLE gets killed in the Tauri context.
+        // `start` uses ShellExecuteEx internally which fully detaches the process.
+        // We use raw_arg to control the exact command line (no Rust auto-quoting).
+        let raw = format!(
+            "/c start \"Deploy\" powershell.exe -NoExit -ExecutionPolicy Bypass -File \"{}\"",
+            script_path
+        );
+        StdCommand::new("cmd.exe")
+            .raw_arg(raw)
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW for cmd.exe itself
             .spawn()
             .map_err(|e| format!("Failed to open terminal: {}", e))?;
     }

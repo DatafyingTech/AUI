@@ -3,6 +3,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { AuiNode, NodeKind } from "@/types/aui-node";
 import { useUiStore } from "@/store/ui-store";
 import { useTreeStore } from "@/store/tree-store";
+import { toast } from "@/components/common/Toast";
 import { getTeamColor } from "@/utils/grouping";
 
 const KIND_COLORS: Record<NodeKind, string> = {
@@ -78,10 +79,11 @@ function OrgNodeInner({ data, selected }: NodeProps) {
     useUiStore.getState().openCreateDialog(node.id);
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    useUiStore.getState().openDeleteDialog(node.id);
+    const name = useTreeStore.getState().removeNodeFromCanvas(node.id);
+    if (name) toast(`Removed ${name} from canvas`, "info");
   };
 
   const currentHandleStyle = hovered ? handleHoverStyle : handleBaseStyle;
@@ -285,7 +287,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
           {/* Delete button — all nodes except root */}
           {!isRoot && (
             <button
-              onClick={handleDelete}
+              onClick={handleRemove}
               onMouseDown={(e) => e.stopPropagation()}
               style={{
                 position: "absolute",
@@ -316,7 +318,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
                 e.currentTarget.style.background = "rgba(120, 120, 120, 0.6)";
                 e.currentTarget.style.color = "#ddd";
               }}
-              title="Delete node"
+              title="Remove from canvas"
             >
               x
             </button>

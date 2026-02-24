@@ -35,6 +35,7 @@ interface TreeActions {
   cacheSkillName(id: string, name: string): void;
   assignSkillToNode(nodeId: string, skillId: string): void;
   removeSkillFromNode(nodeId: string, skillId: string): void;
+  removeNodeFromCanvas(id: string): string | null;
   deleteNodeFromDisk(id: string): Promise<void>;
   exportTeamAsSkill(teamId: string): Promise<string>;
   generateTeamSkillFiles(teamId: string): Promise<string[]>;
@@ -482,6 +483,31 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     get().saveTreeMetadata();
   },
 
+  removeNodeFromCanvas(id: string): string | null {
+    const { nodes } = get();
+    const node = nodes.get(id);
+    if (!node || id === "root") return null;
+
+    const name = node.name;
+    const parentId = node.parentId ?? "root";
+
+    set((state) => {
+      const next = new Map(state.nodes);
+      // Reparent children to the removed node's parent
+      for (const [childId, childNode] of next) {
+        if (childNode.parentId === id) {
+          next.set(childId, { ...childNode, parentId });
+        }
+      }
+      next.delete(id);
+      return { nodes: next };
+    });
+
+    // Persist updated hierarchy
+    get().saveTreeMetadata();
+    return name;
+  },
+
   async deleteNodeFromDisk(id: string) {
     const { nodes } = get();
     const node = nodes.get(id);
@@ -555,15 +581,25 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     // Collect root node for global context
     const rootNode = nodes.get("root");
 
+    // Resolve a skill ID to its display name (nodes map → skillNameCache → null)
+    const { skillNameCache } = get();
+    const resolveSkillName = (sid: string): string | null => {
+      const n = nodes.get(sid);
+      if (n?.name) return n.name;
+      const cached = skillNameCache.get(sid);
+      if (cached) return cached;
+      return null;
+    };
+
     // Collect global skills from root
     const globalSkillNames = (rootNode?.assignedSkills ?? [])
-      .map((sid) => nodes.get(sid)?.name ?? sid)
-      .filter(Boolean);
+      .map((sid) => resolveSkillName(sid))
+      .filter((n): n is string => n !== null);
 
     // Collect team-level skills
     const teamSkillNames = team.assignedSkills
-      .map((sid) => nodes.get(sid)?.name ?? sid)
-      .filter(Boolean);
+      .map((sid) => resolveSkillName(sid))
+      .filter((n): n is string => n !== null);
 
     // Collect all sibling teams for company context
     const siblingTeams: AuiNode[] = [];
@@ -607,8 +643,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
       // Agent skills
       const skillNames = agent.assignedSkills
-        .map((sid) => nodes.get(sid)?.name ?? sid)
-        .filter(Boolean);
+        .map((sid) => resolveSkillName(sid))
+        .filter((n): n is string => n !== null);
       if (skillNames.length > 0) {
         block += `\n**Skills:**\n`;
         for (const sName of skillNames) {
@@ -727,8 +763,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     for (const agent of agents) {
       const agentSlug = agent.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       const skillNames = agent.assignedSkills
-        .map((sid) => nodes.get(sid)?.name ?? sid)
-        .filter(Boolean);
+        .map((sid) => resolveSkillName(sid))
+        .filter((n): n is string => n !== null);
       content += `   - **${agent.name}** (\`name: "${agentSlug}"\`, \`subagent_type: "general-purpose"\`)`;
       if (agent.promptBody) content += `\n     Role: ${agent.promptBody}`;
       if (skillNames.length > 0) content += `\n     Skills: ${skillNames.join(", ")}`;
@@ -794,7 +830,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   },
 
   async generateTeamSkillFiles(teamId: string) {
-    const { nodes, projectPath } = get();
+    const { nodes, projectPath, skillNameCache } = get();
     if (!projectPath) throw new Error("No project loaded");
 
     const team = nodes.get(teamId);
@@ -802,6 +838,15 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
     const teamSlug = team.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const rootNode = nodes.get("root");
+
+    // Resolve a skill ID to its display name (nodes map → skillNameCache → null)
+    const resolveSkillName = (sid: string): string | null => {
+      const n = nodes.get(sid);
+      if (n?.name) return n.name;
+      const cached = skillNameCache.get(sid);
+      if (cached) return cached;
+      return null;
+    };
 
     // Collect direct agents (children) of this team
     const agents: AuiNode[] = [];
@@ -811,8 +856,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
     // Team-level skills
     const teamSkillNames = team.assignedSkills
-      .map((sid) => nodes.get(sid)?.name ?? sid)
-      .filter(Boolean);
+      .map((sid) => resolveSkillName(sid))
+      .filter((n): n is string => n !== null);
 
     const generatedPaths: string[] = [];
 
@@ -825,43 +870,86 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     } else {
     if (!(await exists(managerDir))) await mkdir(managerDir, { recursive: true });
 
-    let managerContent = `---\nname: ${teamSlug}-manager\ndescription: "Senior manager skill for the ${team.name} team"\n---\n\n`;
-    managerContent += `# ${team.name} — Senior Manager\n\n`;
-    managerContent += `You are the **senior manager** of the "${team.name}" team.\n\n`;
-    if (team.promptBody) managerContent += `> ${team.promptBody}\n\n`;
-    managerContent += `## Your Responsibilities\n\n`;
-    managerContent += `1. **Coordinate** ${agents.length} team members to achieve the team's objectives\n`;
-    managerContent += `2. **Delegate** tasks to the appropriate specialist agent\n`;
-    managerContent += `3. **Review** work from team members for quality and consistency\n`;
-    managerContent += `4. **Resolve** conflicts and blockers that arise during execution\n`;
-    managerContent += `5. **Report** progress and final results to the user\n\n`;
+    // Build a rich, context-aware manager skill file
+    const teamDesc = team.promptBody || "";
+    const agentNames = agents.map((a) => a.name).join(", ");
+    const descSuffix = teamDesc ? ` ${teamDesc.replace(/"/g, "'")}` : "";
+
+    let managerContent = `---\nname: ${teamSlug}-manager\n`;
+    managerContent += `description: "Senior manager for the ${team.name} team (${agents.length} agents).${descSuffix} Orchestrate task delegation, quality review, and cross-agent coordination to deliver cohesive results. Use this skill when leading or coordinating the ${team.name} team on any objective."\n`;
+    managerContent += `---\n\n`;
+
+    managerContent += `This skill guides senior management of the ${team.name} team — a group of ${agents.length} specialist agents`;
+    if (teamDesc) managerContent += ` focused on ${teamDesc.endsWith(".") ? teamDesc.slice(0, -1) : teamDesc.toLowerCase()}`;
+    managerContent += `. Your role is to transform high-level objectives into coordinated, parallel workstreams that produce high-quality results efficiently.\n\n`;
+
+    managerContent += `The user provides a goal, project brief, or set of requirements. You break it down, delegate to the right specialists, monitor quality, and synthesize the final output.\n\n`;
+
+    managerContent += `## Coordination Strategy\n\n`;
+    managerContent += `Before delegating, understand the full scope of the objective and design a plan:\n`;
+    managerContent += `- **Decompose**: Break the objective into discrete, well-scoped tasks with clear acceptance criteria. Each task should be completable by a single agent without ambiguity.\n`;
+    managerContent += `- **Parallelize**: Identify which tasks can run concurrently and which have dependencies. Maximize parallel execution — ${agents.length} agents sitting idle is wasted capacity.\n`;
+    managerContent += `- **Match**: Assign tasks to the agent whose expertise best fits. Never assign work outside an agent's domain when a better-suited teammate exists.\n`;
+    managerContent += `- **Sequence**: Order dependent tasks so blockers are resolved early. Front-load research and discovery tasks before implementation tasks.\n\n`;
+
+    managerContent += `**CRITICAL**: Write task descriptions that are specific enough for an agent to execute without follow-up questions. Include context, constraints, expected output format, and definition of done. Vague tasks produce vague results.\n\n`;
 
     if (agents.length > 0) {
       managerContent += `## Your Team\n\n`;
+      managerContent += `You manage ${agents.length} specialist agents. Know their strengths and assign accordingly:\n\n`;
       for (const agent of agents) {
-        managerContent += `- **${agent.name}**: ${agent.promptBody || "Team member"}\n`;
+        const agentCfg = agent.config as Record<string, unknown> | null;
+        const model = agentCfg?.model ? ` (${agentCfg.model})` : "";
+        const agentSkills = agent.assignedSkills
+          .map((sid) => resolveSkillName(sid))
+          .filter((n): n is string => n !== null);
+        const skillNote = agentSkills.length > 0 ? ` | Skills: ${agentSkills.map((s) => `\`/${s}\``).join(", ")}` : "";
+        managerContent += `- **${agent.name}**${model}: ${agent.promptBody || "Team member"}${skillNote}\n`;
       }
       managerContent += "\n";
     }
 
     if (teamSkillNames.length > 0) {
-      managerContent += `## Team Skills\n\n${teamSkillNames.map((s) => `- \`/${s}\``).join("\n")}\n\n`;
+      managerContent += `## Team Skills\n\n`;
+      managerContent += `These skills are available to the team and can be invoked as slash commands:\n\n`;
+      managerContent += `${teamSkillNames.map((s) => `- \`/${s}\``).join("\n")}\n\n`;
     }
 
     if (team.variables.length > 0) {
-      managerContent += `## Team Variables\n\n`;
+      managerContent += `## Team Configuration\n\n`;
       for (const v of team.variables) {
-        managerContent += `- \`${v.name}\`: ${v.value || "(to be provided)"}\n`;
+        managerContent += `- **${v.name}**: ${v.value || "(to be provided at runtime)"}\n`;
       }
       managerContent += "\n";
     }
 
-    managerContent += `## Management Protocol\n\n`;
-    managerContent += `- Use \`TaskCreate\` to break objectives into discrete, assignable tasks\n`;
-    managerContent += `- Use \`TaskUpdate\` with \`owner\` to assign tasks to team members by name\n`;
-    managerContent += `- Use \`SendMessage\` to communicate with team members\n`;
-    managerContent += `- Use \`TaskList\` to monitor overall progress\n`;
-    managerContent += `- When all tasks are complete, compile a summary report\n`;
+    managerContent += `## Quality Standards\n\n`;
+    managerContent += `Every deliverable from your team must meet these criteria before you consider a task complete:\n\n`;
+    managerContent += `- **Correctness**: The output actually solves the stated problem. Verify, don't assume.\n`;
+    managerContent += `- **Completeness**: Nothing is left half-done or marked "TODO". If a task has acceptance criteria, all criteria are met.\n`;
+    managerContent += `- **Consistency**: Work from different agents fits together cohesively — naming conventions, style, tone, and approach are aligned.\n`;
+    managerContent += `- **Quality**: The output reflects professional standards. No sloppy shortcuts, no placeholder content in final deliverables.\n\n`;
+    managerContent += `When reviewing agent work, check for these qualities. Send work back with specific, actionable feedback if it falls short. "This isn't good enough" is not feedback — "The error handling in function X doesn't cover the timeout case" is.\n\n`;
+
+    managerContent += `## Escalation & Conflict Resolution\n\n`;
+    managerContent += `- **Blocked agents**: If an agent reports they're stuck, diagnose whether it's a missing dependency (reassign/create a new task), unclear requirements (clarify directly), or a genuine technical obstacle (escalate to the user).\n`;
+    managerContent += `- **Conflicting approaches**: When two agents produce incompatible work, decide which approach better serves the objective. Don't compromise into a worse hybrid — pick the stronger direction and have the other agent align.\n`;
+    managerContent += `- **Scope creep**: If you discover the objective is larger than initially understood, pause and communicate this to the user before expanding the workload. Don't silently balloon the project.\n`;
+    managerContent += `- **User escalation**: Escalate to the user when you need requirements clarification, when trade-offs require a product decision, or when something is fundamentally blocked.\n\n`;
+
+    managerContent += `## Communication Protocol\n\n`;
+    managerContent += `- Use \`TaskCreate\` to define tasks with detailed descriptions and clear acceptance criteria.\n`;
+    managerContent += `- Use \`TaskUpdate\` with \`owner\` to assign tasks to agents by name: ${agentNames || "your team members"}.\n`;
+    managerContent += `- Use \`SendMessage\` to provide context, answer questions, give feedback, or redirect agents. Be specific and concise.\n`;
+    managerContent += `- Use \`TaskList\` regularly to track progress and identify stalled work early.\n`;
+    managerContent += `- **Do NOT micromanage**: Once a task is clearly defined and assigned, let the agent execute. Intervene only on quality issues or blockers.\n`;
+    managerContent += `- **Do NOT go silent**: When all agents are working, proactively monitor and prepare the synthesis/integration phase.\n\n`;
+
+    managerContent += `## Completion & Reporting\n\n`;
+    managerContent += `When all tasks are complete and quality-checked:\n\n`;
+    managerContent += `1. Verify that the combined output cohesively addresses the original objective.\n`;
+    managerContent += `2. Compile a concise summary: what was accomplished, key decisions made, any caveats or follow-up items.\n`;
+    managerContent += `3. Present the final result to the user with confidence — you've already verified quality, so stand behind your team's work.\n`;
 
     await writeTextFile(managerPath, managerContent);
     generatedPaths.push(managerPath);
@@ -880,66 +968,128 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
       if (!(await exists(agentDir))) await mkdir(agentDir, { recursive: true });
 
-      let agentContent = `---\nname: ${teamSlug}-${agentSlug}\ndescription: "${agent.name} — specialist agent on the ${team.name} team"\n---\n\n`;
-      agentContent += `# ${agent.name}\n\n`;
-      agentContent += `You are **${agent.name}**, a specialist agent on the **${team.name}** team.\n\n`;
-      if (agent.promptBody) agentContent += `> ${agent.promptBody}\n\n`;
-
-      agentContent += `## Your Role\n\n`;
-      agentContent += `You report to the ${team.name} senior manager. Focus on your area of expertise and deliver high-quality results.\n\n`;
-
-      // Agent-specific skills
-      const agentSkillNames = agent.assignedSkills
-        .map((sid) => nodes.get(sid)?.name ?? sid)
-        .filter(Boolean);
-
-      if (agentSkillNames.length > 0) {
-        agentContent += `## Your Skills\n\n${agentSkillNames.map((s) => `- \`/${s}\``).join("\n")}\n\n`;
-      }
-
-      // Agent variables
-      if (agent.variables.length > 0) {
-        agentContent += `## Your Variables\n\n`;
-        for (const v of agent.variables) {
-          agentContent += `- \`${v.name}\`: ${v.value || "(to be provided)"}\n`;
-        }
-        agentContent += "\n";
-      }
-
-      // Config details
+      // Build rich context from agent data
       const cfg = agent.config as Record<string, unknown> | null;
-      if (cfg) {
-        const details: string[] = [];
-        if (cfg.model) details.push(`Model: \`${cfg.model}\``);
-        if (Array.isArray(cfg.tools) && cfg.tools.length > 0) {
-          details.push(`Tools: ${(cfg.tools as string[]).map((t) => `\`${t}\``).join(", ")}`);
-        }
-        if (details.length > 0) {
-          agentContent += `## Configuration\n\n${details.join("\n")}\n\n`;
-        }
-      }
+      const agentDescSafe = agent.promptBody ? ` ${agent.promptBody.replace(/"/g, "'")}` : "";
+      const agentSkillNames = agent.assignedSkills
+        .map((sid) => resolveSkillName(sid))
+        .filter((n): n is string => n !== null);
 
-      // Sub-agents
+      // Collect teammates (other agents on the same team)
+      const teammates = agents.filter((a) => a.id !== agent.id);
+
+      // Collect sub-agents
       const subAgents: AuiNode[] = [];
       for (const n of nodes.values()) {
         if (n.parentId === agent.id) subAgents.push(n);
       }
+
+      // --- Frontmatter ---
+      let agentContent = `---\nname: ${teamSlug}-${agentSlug}\n`;
+      agentContent += `description: "${agent.name} — specialist agent on the ${team.name} team.${agentDescSafe} Handles assigned tasks with domain expertise, delivers quality results, and coordinates with teammates. Use this skill when operating as ${agent.name} within the ${team.name} team."\n`;
+      agentContent += `---\n\n`;
+
+      // --- Overview ---
+      agentContent += `This skill defines the role of ${agent.name} on the ${team.name} team`;
+      if (agent.promptBody) {
+        agentContent += ` — ${agent.promptBody.endsWith(".") ? agent.promptBody.slice(0, -1) : agent.promptBody}`;
+      }
+      agentContent += `. You receive tasks from the team's senior manager, execute them with care and expertise, and deliver results that meet professional standards.\n\n`;
+
+      agentContent += `The senior manager assigns you tasks via the task system. Each task includes context, requirements, and acceptance criteria. Your job is to deliver complete, high-quality work — not to ask clarifying questions about things you can figure out yourself.\n\n`;
+
+      // --- Role & Domain Guidelines ---
+      agentContent += `## Role & Domain Guidelines\n\n`;
+      if (agent.promptBody) {
+        agentContent += `Your core focus: ${agent.promptBody}\n\n`;
+        agentContent += `When working in this domain:\n`;
+        agentContent += `- **Own your expertise**: You were chosen for this role because of your specialization. Make confident decisions within your domain rather than deferring everything upward.\n`;
+        agentContent += `- **Think holistically**: Don't just complete the literal task — consider how your work fits into the broader team objective. Flag integration issues early.\n`;
+        agentContent += `- **Be thorough**: Cover edge cases, validate assumptions, and test your work before reporting completion. A "done" task that needs rework costs more than taking extra time upfront.\n`;
+      } else {
+        agentContent += `You are a versatile team member. Approach each task methodically:\n`;
+        agentContent += `- **Understand before acting**: Read the full task description and think about the approach before diving in.\n`;
+        agentContent += `- **Deliver complete work**: Partial results or placeholder content are not acceptable as final deliverables.\n`;
+        agentContent += `- **Communicate clearly**: When reporting results, be specific about what you did and any decisions you made.\n`;
+      }
+      agentContent += "\n";
+
+      // --- Skills & Tools ---
+      if (agentSkillNames.length > 0 || (cfg && (cfg.tools || cfg.allowedCommands))) {
+        agentContent += `## Skills & Tools\n\n`;
+        if (agentSkillNames.length > 0) {
+          agentContent += `**Assigned skills** (invoke as slash commands):\n\n`;
+          agentContent += `${agentSkillNames.map((s) => `- \`/${s}\``).join("\n")}\n\n`;
+          agentContent += `Use these skills proactively when they apply to your task. They represent capabilities specifically chosen for your role.\n\n`;
+        }
+        if (cfg) {
+          const toolItems: string[] = [];
+          if (Array.isArray(cfg.tools) && cfg.tools.length > 0) {
+            toolItems.push(`**Allowed tools**: ${(cfg.tools as string[]).map((t) => `\`${t}\``).join(", ")}`);
+          }
+          if (Array.isArray(cfg.allowedCommands) && cfg.allowedCommands.length > 0) {
+            toolItems.push(`**Allowed commands**: ${(cfg.allowedCommands as string[]).map((c) => `\`${c}\``).join(", ")}`);
+          }
+          if (cfg.model) {
+            toolItems.push(`**Model**: \`${cfg.model}\``);
+          }
+          if (toolItems.length > 0) {
+            agentContent += `${toolItems.join("\n")}\n\n`;
+          }
+        }
+      }
+
+      // --- Agent variables ---
+      if (agent.variables.length > 0) {
+        agentContent += `## Configuration\n\n`;
+        agentContent += `These variables define your operating parameters:\n\n`;
+        for (const v of agent.variables) {
+          agentContent += `- **${v.name}**: ${v.value || "(to be provided at runtime)"}\n`;
+        }
+        agentContent += "\n";
+      }
+
+      // --- Sub-agents ---
       if (subAgents.length > 0) {
         agentContent += `## Sub-agents\n\n`;
+        agentContent += `You can delegate work to these sub-agents when appropriate:\n\n`;
         for (const sub of subAgents) {
           agentContent += `- **${sub.name}**`;
-          if (sub.promptBody) agentContent += ` — ${sub.promptBody}`;
+          if (sub.promptBody) agentContent += `: ${sub.promptBody}`;
           agentContent += "\n";
         }
         agentContent += "\n";
       }
 
+      // --- Collaboration ---
+      if (teammates.length > 0) {
+        agentContent += `## Collaboration\n\n`;
+        agentContent += `You work alongside ${teammates.length} teammate${teammates.length > 1 ? "s" : ""} on the ${team.name} team:\n\n`;
+        for (const tm of teammates) {
+          agentContent += `- **${tm.name}**: ${tm.promptBody || "Team member"}\n`;
+        }
+        agentContent += "\n";
+        agentContent += `When your work intersects with a teammate's domain, coordinate through the senior manager or send a direct message via \`SendMessage\`. Don't duplicate effort — if someone else is better suited for a subtask, flag it rather than doing it poorly yourself.\n\n`;
+      }
+
+      // --- Deliverables & Quality ---
+      agentContent += `## Deliverables & Quality\n\n`;
+      agentContent += `Every task you complete should meet these standards:\n\n`;
+      agentContent += `- **Complete**: All acceptance criteria from the task description are satisfied. Nothing is left as "TODO" or "placeholder".\n`;
+      agentContent += `- **Correct**: Your output actually solves the problem. Test and verify before marking done.\n`;
+      agentContent += `- **Clean**: Professional quality — well-structured, properly formatted, no rough edges.\n`;
+      agentContent += `- **Contextual**: Your work fits the broader team objective, not just the isolated task.\n\n`;
+      agentContent += `If you realize mid-task that the requirements are ambiguous or the scope is larger than expected, message the senior manager immediately rather than guessing or delivering partial work.\n\n`;
+
+      // --- Work Protocol ---
       agentContent += `## Work Protocol\n\n`;
-      agentContent += `1. Check \`TaskList\` for assigned tasks\n`;
-      agentContent += `2. Mark tasks \`in_progress\` when starting work\n`;
-      agentContent += `3. Complete the task thoroughly and mark it \`completed\`\n`;
-      agentContent += `4. Send a message to the team lead summarizing what you accomplished\n`;
-      agentContent += `5. Check for more available tasks\n`;
+      agentContent += `1. Check \`TaskList\` for tasks assigned to you.\n`;
+      agentContent += `2. Read the full task description carefully. Understand the context, constraints, and definition of done before starting.\n`;
+      agentContent += `3. Mark the task \`in_progress\` using \`TaskUpdate\`.\n`;
+      agentContent += `4. Execute the task thoroughly. Verify your own work against the acceptance criteria.\n`;
+      agentContent += `5. Mark the task \`completed\` and send a concise summary to the senior manager via \`SendMessage\` — what you did, key decisions made, anything the team should know.\n`;
+      agentContent += `6. Check \`TaskList\` for the next available task. Don't wait to be told — pick up work proactively.\n\n`;
+      agentContent += `**IMPORTANT**: If you get stuck or blocked, report it immediately via \`SendMessage\` to the senior manager. Sitting idle without communicating wastes everyone's time. Explain what's blocking you and what you've already tried.\n`;
 
       await writeTextFile(agentPath, agentContent);
       generatedPaths.push(agentPath);
@@ -949,8 +1099,17 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   },
 
   async saveCompanyPlan() {
-    const { nodes, projectPath } = get();
+    const { nodes, projectPath, skillNameCache } = get();
     if (!projectPath) throw new Error("No project loaded");
+
+    // Resolve a skill ID to its display name (nodes map → skillNameCache → null)
+    const resolveSkillName = (sid: string): string | null => {
+      const n = nodes.get(sid);
+      if (n?.name) return n.name;
+      const cached = skillNameCache.get(sid);
+      if (cached) return cached;
+      return null;
+    };
 
     const planDir = join(projectPath, ".aui", "company-plan");
     if (!(await exists(planDir))) {
@@ -996,8 +1155,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         if (team.promptBody) readme += `${team.promptBody}\n\n`;
         readme += `- **Agents:** ${agents.length}\n`;
         const teamSkills = team.assignedSkills
-          .map((sid) => nodes.get(sid)?.name ?? sid)
-          .filter(Boolean);
+          .map((sid) => resolveSkillName(sid))
+          .filter((n): n is string => n !== null);
         if (teamSkills.length > 0) {
           readme += `- **Team Skills:** ${teamSkills.join(", ")}\n`;
         }
@@ -1007,8 +1166,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
           readme += `| Agent | Role | Skills |\n|-------|------|--------|\n`;
           for (const agent of agents) {
             const skills = agent.assignedSkills
-              .map((sid) => nodes.get(sid)?.name ?? sid)
-              .filter(Boolean);
+              .map((sid) => resolveSkillName(sid))
+              .filter((n): n is string => n !== null);
             readme += `| ${agent.name} | ${agent.promptBody || "—"} | ${skills.join(", ") || "—"} |\n`;
           }
           readme += "\n";
@@ -1047,8 +1206,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     for (const team of teams) {
       const agents = getChildren(team.id);
       const teamSkills = team.assignedSkills
-        .map((sid) => nodes.get(sid)?.name ?? sid)
-        .filter(Boolean);
+        .map((sid) => resolveSkillName(sid))
+        .filter((n): n is string => n !== null);
       const slug = team.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
       let teamMd = `# ${team.name}\n\n`;
@@ -1059,8 +1218,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       teamMd += `## Agents\n\n`;
       for (const agent of agents) {
         const skills = agent.assignedSkills
-          .map((sid) => nodes.get(sid)?.name ?? sid)
-          .filter(Boolean);
+          .map((sid) => resolveSkillName(sid))
+          .filter((n): n is string => n !== null);
         teamMd += `### ${agent.name}\n\n`;
         if (agent.promptBody) teamMd += `${agent.promptBody}\n\n`;
         if (skills.length > 0) {

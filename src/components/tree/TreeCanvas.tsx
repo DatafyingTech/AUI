@@ -88,7 +88,6 @@ export function TreeCanvas() {
   const closeContextMenu = useUiStore((s) => s.closeContextMenu);
   const openContextMenu = useUiStore((s) => s.openContextMenu);
   const openCreateDialog = useUiStore((s) => s.openCreateDialog);
-  const openDeleteDialog = useUiStore((s) => s.openDeleteDialog);
   const toggleInspector = useUiStore((s) => s.toggleInspector);
   const projectPath = useTreeStore((s) => s.projectPath);
   const updateNode = useTreeStore((s) => s.updateNode);
@@ -314,7 +313,8 @@ export function TreeCanvas() {
           // Don't trigger when typing in inputs
           const tag = (e.target as HTMLElement)?.tagName;
           if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-          openDeleteDialog(nodeId);
+          const name = useTreeStore.getState().removeNodeFromCanvas(nodeId);
+          if (name) toast(`Removed ${name} from canvas`, "info");
         }
       }
       if (e.key === "Escape") {
@@ -323,7 +323,7 @@ export function TreeCanvas() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [selectNode, openDeleteDialog]);
+  }, [selectNode]);
 
   // Context menu items
   const contextMenuItems = useMemo(() => {
@@ -364,12 +364,15 @@ export function TreeCanvas() {
       },
       { label: "", onClick: () => {}, divider: true },
       {
-        label: "Delete",
+        label: "Remove from Canvas",
         danger: true,
-        onClick: () => openDeleteDialog(nodeId),
+        onClick: () => {
+          const name = useTreeStore.getState().removeNodeFromCanvas(nodeId);
+          if (name) toast(`Removed ${name} from canvas`, "info");
+        },
       },
     ];
-  }, [contextMenu, selectNode, toggleInspector, reparentNode, openDeleteDialog]);
+  }, [contextMenu, selectNode, toggleInspector, reparentNode]);
 
   if (loading) {
     return (

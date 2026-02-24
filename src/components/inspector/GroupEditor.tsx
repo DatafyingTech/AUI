@@ -103,6 +103,7 @@ export function GroupEditor({ node }: GroupEditorProps) {
   const saveTreeMetadata = useTreeStore((s) => s.saveTreeMetadata);
   const createSkillNode = useTreeStore((s) => s.createSkillNode);
   const cacheSkillName = useTreeStore((s) => s.cacheSkillName);
+  const skillNameCache = useTreeStore((s) => s.skillNameCache);
   const exportTeamAsSkill = useTreeStore((s) => s.exportTeamAsSkill);
   const generateTeamSkillFiles = useTreeStore((s) => s.generateTeamSkillFiles);
   const selectNode = useUiStore((s) => s.selectNode);
@@ -386,13 +387,22 @@ Make names descriptive and specific. Use title case.`;
     const teamSlug = node.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const objective = deployPrompt || "Complete the tasks assigned to this team.";
 
+    // Resolve a skill ID to its display name using nodes map, then skillNameCache fallback
+    const resolveSkillName = (sid: string): string | null => {
+      const n = nodes.get(sid);
+      if (n?.name) return n.name;
+      const cached = skillNameCache.get(sid);
+      if (cached) return cached;
+      return null;
+    };
+
     // Get root/company context
     const rootNode = nodes.get("root");
     const rootName = rootNode?.name ?? "Unknown";
     const rootDesc = rootNode?.promptBody ?? "";
     const globalSkillNames = (rootNode?.assignedSkills ?? [])
-      .map((sid) => nodes.get(sid)?.name ?? sid)
-      .filter(Boolean);
+      .map((sid) => resolveSkillName(sid))
+      .filter((n): n is string => n !== null);
 
     // Sibling teams for context
     const siblingTeams: string[] = [];
@@ -427,8 +437,8 @@ Make names descriptive and specific. Use title case.`;
     // Team-level assigned skills
     const teamSkillBlocks: string[] = [];
     for (const sid of node.assignedSkills) {
-      const skillNode = nodes.get(sid);
-      if (skillNode) teamSkillBlocks.push(`- /${skillNode.name}`);
+      const sName = resolveSkillName(sid);
+      if (sName) teamSkillBlocks.push(`- /${sName}`);
     }
 
     let primer = `You are being deployed as the senior team manager for "${node.name}".
@@ -465,12 +475,14 @@ You MUST follow these steps exactly:
 3. **Create and assign tasks** — Use \`TaskCreate\` to break the objective into tasks, then \`TaskUpdate\` with \`owner\` to assign each task to the right agent by name
 4. **Coordinate** — Monitor progress via \`TaskList\`, resolve conflicts, answer agent questions via \`SendMessage\`
 5. **Complete** — When all tasks are done, compile a summary report and shut down the team
-
+${teamSkillBlocks.length > 0 || globalSkillNames.length > 0 ? `
+## SKILLS
+Skills listed above (prefixed with \`/\`) can be invoked using the \`Skill\` tool. For example: \`Skill(skill: "skill-name")\`. Pass skills to agents by including the skill name in their spawn prompt so they know to invoke them.` : ""}
 IMPORTANT: Each agent already has their full skill file content above. Pass it directly in their spawn prompt so they can start working immediately without needing to research or discover anything. They should hit the ground running.
 `;
 
     return primer;
-  }, [children, node, nodes, deployPrompt, readSkillFile, projectPath]);
+  }, [children, node, nodes, deployPrompt, readSkillFile, projectPath, skillNameCache]);
 
   const handleGenerateSkills = useCallback(async () => {
     setGeneratingSkills(true);
@@ -519,23 +531,32 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         const scriptPath = join(auiDir, "deploy.ps1");
         const winScriptPath = scriptPath.replace(/\//g, "\\");
         const escapedPrimerPath = winPrimerPath.replace(/'/g, "''");
+        const escapedName = node.name.replace(/'/g, "''");
         const ps1Content = [
-          "$ErrorActionPreference = 'Stop'",
-          `Write-Host 'Deploying team: ${node.name}' -ForegroundColor Cyan`,
-          `Write-Host 'Reading primer...' -ForegroundColor Yellow`,
-          `$primer = Get-Content -Raw '${escapedPrimerPath}'`,
+          `Remove-Item Env:CLAUDECODE -ErrorAction SilentlyContinue`,
+          `Write-Host 'Deploying team: ${escapedName}' -ForegroundColor Cyan`,
+          `Write-Host 'Primer: ${escapedPrimerPath}' -ForegroundColor Yellow`,
           `Write-Host 'Starting Claude...' -ForegroundColor Green`,
-          `claude --dangerously-skip-permissions $primer`,
+          `try {`,
+          `  claude --dangerously-skip-permissions "Read the deployment primer at '${escapedPrimerPath}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`,
+          `} catch {`,
+          `  Write-Host "Error: $_" -ForegroundColor Red`,
+          `}`,
+          `Write-Host ''`,
+          `Read-Host 'Press Enter to close'`,
         ].join("\r\n");
         await writeTextFile(scriptPath, ps1Content);
         await invoke("open_terminal", { scriptPath: winScriptPath });
       } else {
         // macOS / Linux: write a shell script
         const scriptPath = join(auiDir, "deploy.sh");
+        const escapedPrimerPathUnix = primerPath.replace(/'/g, "'\\''");
         const shContent = [
           "#!/bin/bash",
-          `primer=$(cat '${primerPath}')`,
-          `claude --dangerously-skip-permissions "$primer"`,
+          "unset CLAUDECODE",
+          `echo 'Deploying team: ${node.name.replace(/'/g, "'\\''")}'`,
+          `echo 'Starting Claude...'`,
+          `claude --dangerously-skip-permissions "Read the deployment primer at '${escapedPrimerPathUnix}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`,
           "exec bash",
         ].join("\n");
         await writeTextFile(scriptPath, shContent);
@@ -572,7 +593,47 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
   return (
     <div>
-      {/* Deploy — only for top-level teams, shown FIRST for prominence */}
+      {/* 1. Name + Description (always visible, at top) */}
+      <div style={{ marginBottom: 16 }}>
+        <label style={labelStyle}>Name</label>
+        <input
+          style={inputStyle}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+          <label style={{ ...labelStyle, marginBottom: 0 }}>Description</label>
+          <button
+            onClick={handleGenerate}
+            disabled={generating || !name.trim()}
+            style={{
+              padding: "2px 10px",
+              fontSize: 10,
+              fontWeight: 600,
+              background: generating ? "var(--border-color)" : "var(--accent-purple)",
+              color: "white",
+              border: "none",
+              borderRadius: 10,
+              cursor: generating || !name.trim() ? "default" : "pointer",
+              opacity: generating || !name.trim() ? 0.5 : 1,
+              transition: "opacity 0.15s",
+            }}
+          >
+            {generating ? "Generating..." : "Generate"}
+          </button>
+        </div>
+        <textarea
+          rows={3}
+          style={{ ...inputStyle, resize: "vertical" }}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+
+      {/* 2. Deploy — only for top-level teams */}
       {!isMember && (
         <div style={{ marginBottom: 16 }}>
           <div style={sectionHeaderStyle}>Deploy</div>
@@ -713,114 +774,11 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         </div>
       )}
 
-      {/* Info — Name + Description (always visible) */}
-      <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>Name</label>
-        <input
-          style={inputStyle}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
+      {/* 3. Skills & Variables — combined collapsible section */}
+      <CollapsibleSection title="Skills & Variables" count={assignedSkills.length + variables.filter((v) => v.name.trim()).length} defaultOpen={assignedSkills.length > 0 || variables.length > 0}>
+        {/* Assigned Skills */}
+        <div style={{ ...labelStyle, marginBottom: 8 }}>Assigned Skills</div>
 
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <label style={{ ...labelStyle, marginBottom: 0 }}>Description</label>
-          <button
-            onClick={handleGenerate}
-            disabled={generating || !name.trim()}
-            style={{
-              padding: "2px 10px",
-              fontSize: 10,
-              fontWeight: 600,
-              background: generating ? "var(--border-color)" : "var(--accent-purple)",
-              color: "white",
-              border: "none",
-              borderRadius: 10,
-              cursor: generating || !name.trim() ? "default" : "pointer",
-              opacity: generating || !name.trim() ? 0.5 : 1,
-              transition: "opacity 0.15s",
-            }}
-          >
-            {generating ? "Generating..." : "Generate"}
-          </button>
-        </div>
-        <textarea
-          rows={3}
-          style={{ ...inputStyle, resize: "vertical" }}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-
-      {/* Variables — collapsible */}
-      <CollapsibleSection title="Variables" count={variables.filter((v) => v.name.trim()).length} defaultOpen={variables.length > 0}>
-        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
-          Key-value pairs (API keys, URLs, etc.) available to this {isMember ? "agent" : "team"}.
-        </div>
-
-        {variables.map((v, i) => (
-          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
-            <input
-              style={{ ...inputStyle, flex: 1 }}
-              placeholder="Name"
-              value={v.name}
-              onChange={(e) => {
-                const next = [...variables];
-                next[i] = { ...next[i], name: e.target.value };
-                setVariables(next);
-              }}
-            />
-            <input
-              style={{ ...inputStyle, flex: 2 }}
-              placeholder="Value"
-              value={v.value}
-              onChange={(e) => {
-                const next = [...variables];
-                next[i] = { ...next[i], value: e.target.value };
-                setVariables(next);
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setVariables(variables.filter((_, j) => j !== i))}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--text-secondary)",
-                cursor: "pointer",
-                padding: "0 4px",
-                fontSize: 14,
-                lineHeight: 1,
-                flexShrink: 0,
-              }}
-              title="Remove variable"
-            >
-              x
-            </button>
-          </div>
-        ))}
-
-        <button
-          onClick={() => setVariables([...variables, { name: "", value: "" }])}
-          style={{
-            width: "100%",
-            padding: "6px 12px",
-            background: "transparent",
-            color: "var(--accent-purple)",
-            border: "1px dashed var(--accent-purple)",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: 11,
-            fontWeight: 600,
-          }}
-        >
-          + Add Variable
-        </button>
-      </CollapsibleSection>
-
-      {/* Assigned Skills — collapsible */}
-      <CollapsibleSection title="Assigned Skills" count={assignedSkills.length} defaultOpen={assignedSkills.length > 0}>
         {assignedSkills.length === 0 && (
           <div
             style={{
@@ -997,10 +955,77 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
             </div>
           </div>
         )}
+
+        {/* Variables */}
+        <div style={{ ...labelStyle, marginTop: 16, marginBottom: 8 }}>Variables</div>
+
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
+          Key-value pairs (API keys, URLs, etc.) available to this {isMember ? "agent" : "team"}.
+        </div>
+
+        {variables.map((v, i) => (
+          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
+            <input
+              style={{ ...inputStyle, flex: 1 }}
+              placeholder="Name"
+              value={v.name}
+              onChange={(e) => {
+                const next = [...variables];
+                next[i] = { ...next[i], name: e.target.value };
+                setVariables(next);
+              }}
+            />
+            <input
+              style={{ ...inputStyle, flex: 2 }}
+              placeholder="Value"
+              value={v.value}
+              onChange={(e) => {
+                const next = [...variables];
+                next[i] = { ...next[i], value: e.target.value };
+                setVariables(next);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setVariables(variables.filter((_, j) => j !== i))}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                padding: "0 4px",
+                fontSize: 14,
+                lineHeight: 1,
+                flexShrink: 0,
+              }}
+              title="Remove variable"
+            >
+              x
+            </button>
+          </div>
+        ))}
+
+        <button
+          onClick={() => setVariables([...variables, { name: "", value: "" }])}
+          style={{
+            width: "100%",
+            padding: "6px 12px",
+            background: "transparent",
+            color: "var(--accent-purple)",
+            border: "1px dashed var(--accent-purple)",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontSize: 11,
+            fontWeight: 600,
+          }}
+        >
+          + Add Variable
+        </button>
       </CollapsibleSection>
 
-      {/* Generate with AI — collapsible */}
-      <CollapsibleSection title="Generate with AI" defaultOpen={false}>
+      {/* 4. Agents — collapsible, includes Generate with AI controls */}
+      <CollapsibleSection title="Agents" count={children.length}>
+        {/* Generate with AI controls */}
         <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "flex-end" }}>
           <div style={{ width: 70 }}>
             <label style={{ ...labelStyle, fontSize: 10 }}>Count</label>
@@ -1033,10 +1058,8 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
             {autoFilling ? "Generating..." : "Generate Agents"}
           </button>
         </div>
-      </CollapsibleSection>
 
-      {/* Agents — collapsible */}
-      <CollapsibleSection title="Agents" count={children.length}>
+        {/* Agent list */}
         {children.length === 0 && (
           <div
             style={{
@@ -1114,7 +1137,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         </button>
       </CollapsibleSection>
 
-      {/* Action Buttons */}
+      {/* 5. Save/Discard buttons */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 24 }}>
         <button
           onClick={handleSave}

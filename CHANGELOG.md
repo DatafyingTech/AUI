@@ -1,5 +1,24 @@
 # AUI (Agent UI) — Changelog
 
+## v0.3.4 — February 24, 2026
+
+### Bug Fixes
+- **Deploy terminal stays open** — switched to `cmd /c start` with `raw_arg` for fully independent process detachment, so the deploy terminal no longer closes unexpectedly
+- **Cleared CLAUDECODE env var in deploy scripts** — prevents nested session detection error when deploying from within an existing Claude Code session
+- **Primer passed as file-read instruction** — deploy primer is now read from file instead of being passed as a 9.3KB CLI argument, fixing PowerShell argument corruption from 50 unescaped double quotes shattering the primer into 94 separate arguments
+- **Node name single-quote escaping** — deploy scripts (both PS1 and bash) now properly escape single quotes in node names
+- **Skill names resolve correctly in deploy primer** — primer now uses skillNameCache to resolve display names instead of falling back to raw hash IDs
+- **Added Skill tool invocation instructions to primer** — deployment primer now includes instructions for agents to invoke skills
+
+### Enhancements
+- **Richer generated skill files** — skill file generation now produces thorough, opinionated content with domain-specific guidelines, quality standards, and detailed protocols (benchmarked against frontend-design quality)
+- **Reordered team editor** — sections now flow: Name/Description, Deploy, Skills & Variables, Agents, Save
+- **Canvas X button soft-removes nodes** — the X button on canvas nodes now removes them from the canvas without deleting files from disk (renamed to "Remove from Canvas")
+- **Combined Skills & Variables** — Skills and Variables merged into a single collapsible section in the team editor
+- **Generate with AI moved inside Agents section** — reduces top-level clutter in the team editor
+
+---
+
 ## v0.3.2 — February 24, 2026
 
 ### Bug Fixes

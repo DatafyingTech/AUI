@@ -23,6 +23,7 @@ const QUICK_ACTIONS = [
 export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const selectedNodeId = useUiStore((s) => s.selectedNodeId);
   const nodes = useTreeStore((s) => s.nodes);
+  const skillNameCache = useTreeStore((s) => s.skillNameCache);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -79,8 +80,14 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     let fullPrompt = trimmed;
     if (selectedNode) {
       const skillNames = selectedNode.assignedSkills
-        .map((sid) => nodes.get(sid)?.name ?? sid)
-        .filter(Boolean);
+        .map((sid) => {
+          const n = nodes.get(sid);
+          if (n?.name) return n.name;
+          const cached = skillNameCache.get(sid);
+          if (cached) return cached;
+          return null;
+        })
+        .filter((n): n is string => n !== null);
       const contextLines = [
         `[Context: ${selectedNode.name} (${selectedNode.kind})]`,
       ];
