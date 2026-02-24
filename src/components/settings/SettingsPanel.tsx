@@ -295,6 +295,41 @@ export function SettingsPanel() {
             </button>
           </>
         )}
+
+        {/* Advanced */}
+        <div style={sectionStyle}>Advanced</div>
+
+        <button
+          onClick={async () => {
+            if (!projectPath) return;
+            try {
+              const { open: shellOpen } = await import("@tauri-apps/plugin-shell");
+              const settingsPath = join(projectPath, ".claude", "settings.json");
+              await shellOpen(settingsPath);
+            } catch {
+              toast("Could not open settings file", "error");
+            }
+          }}
+          style={{
+            width: "100%",
+            padding: "8px 12px",
+            background: "transparent",
+            color: "var(--text-secondary)",
+            border: "1px solid var(--border-color)",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontSize: 12,
+            fontWeight: 500,
+            transition: "border-color 0.15s, color 0.15s",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-color)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+        >
+          Open Claude Settings File
+        </button>
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>
+          Opens .claude/settings.json in your default editor
+        </div>
       </div>
     </div>
   );

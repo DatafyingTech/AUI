@@ -41,6 +41,16 @@ function ToolbarButton({
 export function Toolbar() {
   const nodeCount = useTreeStore((s) => s.nodes.size);
   const toggleContextHub = useUiStore((s) => s.toggleContextHub);
+  const collapsedGroups = useUiStore((s) => s.collapsedGroups);
+  const collapseAllGroups = useUiStore((s) => s.collapseAllGroups);
+  const expandAllGroups = useUiStore((s) => s.expandAllGroups);
+  const nodes = useTreeStore((s) => s.nodes);
+
+  const groupIds = new Set<string>();
+  for (const [id, node] of nodes) {
+    if (node.kind === "group") groupIds.add(id);
+  }
+  const allCollapsed = groupIds.size > 0 && groupIds.size === collapsedGroups.size;
 
   return (
     <header
@@ -73,6 +83,16 @@ export function Toolbar() {
         <ToolbarButton
           label="+"
           onClick={() => useUiStore.getState().openCreateDialog()}
+        />
+        <ToolbarButton
+          label={allCollapsed ? "Expand" : "Collapse"}
+          onClick={() => {
+            if (allCollapsed) {
+              expandAllGroups();
+            } else {
+              collapseAllGroups(groupIds);
+            }
+          }}
         />
         <ToolbarButton label="Menu" onClick={toggleContextHub} />
         <span

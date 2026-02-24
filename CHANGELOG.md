@@ -1,5 +1,24 @@
 # AUI (Agent UI) — Changelog
 
+## v0.2.1 — February 23, 2026
+
+### Improvements
+- Added "Collapse All" / "Expand All" button in the toolbar for quick team management
+- Made the entire agent count row on team nodes clickable for expand/collapse (not just the tiny arrow)
+- Moved "Open Settings File" from the main menu into the Settings panel under a new "Advanced" section
+- Fixed deploy to open a visible terminal window (was spawning invisible child processes)
+- Cleaned up leftover references to removed features
+
+### Documentation
+- Added comprehensive USAGE.md user guide (479 lines)
+- Added CONTRIBUTING.md for open-source contributors
+- Added MIT LICENSE
+- Enhanced README with badges, "Why AUI?" section, and contributing link
+- Created 6 roadmap issues on GitHub
+- Added 15 GitHub topics for search discoverability
+
+---
+
 ## v0.2.0 — February 23, 2026
 
 ### Major Features

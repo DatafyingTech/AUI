@@ -844,16 +844,6 @@ export function ContextHub() {
           }} />
           <UtilityButton label="Settings" onClick={() => { toggleSettings(); toggleContextHub(); }} />
           <UtilityButton label="Schedules" onClick={() => { useUiStore.getState().toggleSchedule(); toggleContextHub(); }} />
-          <UtilityButton label="Settings File" onClick={async () => {
-            if (!projectPath) return;
-            try {
-              const { open: shellOpen } = await import("@tauri-apps/plugin-shell");
-              const settingsPath = join(projectPath, ".claude", "settings.json");
-              await shellOpen(settingsPath);
-            } catch {
-              toast("Could not open settings file", "error");
-            }
-          }} />
         </div>
 
         {/* Search input */}

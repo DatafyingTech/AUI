@@ -182,6 +182,11 @@ function OrgNodeInner({ data, selected }: NodeProps) {
       {/* Group child count with collapse toggle */}
       {isGroup && (
         <div
+          onClick={(e) => {
+            e.stopPropagation();
+            useUiStore.getState().toggleCollapse(node.id);
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
           style={{
             fontSize: 11,
             color: isMember ? "#ff9800" : "#4a9eff",
@@ -189,19 +194,14 @@ function OrgNodeInner({ data, selected }: NodeProps) {
             display: "flex",
             alignItems: "center",
             gap: 4,
+            cursor: "pointer",
+            userSelect: "none",
+            padding: "2px 0",
+            borderRadius: 4,
           }}
+          title={collapsed ? "Expand group" : "Collapse group"}
         >
-          <span
-            onClick={(e) => {
-              e.stopPropagation();
-              useUiStore.getState().toggleCollapse(node.id);
-            }}
-            onMouseDown={(e) => e.stopPropagation()}
-            style={{ cursor: "pointer", userSelect: "none" }}
-            title={collapsed ? "Expand group" : "Collapse group"}
-          >
-            {collapsed ? "\u25B8" : "\u25BE"}
-          </span>
+          <span>{collapsed ? "\u25B8" : "\u25BE"}</span>
           {childCount} {childCount === 1 ? "agent" : "agents"}
           {collapsed && (
             <span style={{ color: "#a0a0a0", fontSize: 10 }}>(collapsed)</span>

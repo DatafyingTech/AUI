@@ -41,6 +41,8 @@ interface UiActions {
   toggleCollapse(groupId: string): void;
   toggleMultiSelect(nodeId: string): void;
   clearMultiSelect(): void;
+  collapseAllGroups(groupIds: Set<string>): void;
+  expandAllGroups(): void;
 }
 
 type UiStore = UiState & UiActions;
@@ -172,5 +174,13 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 
   clearMultiSelect() {
     set({ multiSelectedNodeIds: new Set<string>() });
+  },
+
+  collapseAllGroups(groupIds: Set<string>) {
+    set({ collapsedGroups: new Set(groupIds) });
+  },
+
+  expandAllGroups() {
+    set({ collapsedGroups: new Set<string>() });
   },
 }));

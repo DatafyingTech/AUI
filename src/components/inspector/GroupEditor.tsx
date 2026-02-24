@@ -464,25 +464,37 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
       setDeployOutput((prev) => [...prev, `Primer saved to ${primerPath}`, "Opening terminal..."]);
 
-      // Spawn external terminal with claude session
+      // Spawn a VISIBLE terminal window (not a hidden child process)
       const { Command } = await import("@tauri-apps/plugin-shell");
 
-      // Detect platform and open appropriate terminal
+      // Detect platform
       const isWindows = navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
+      const isMac = navigator.userAgent.includes("Mac") || navigator.platform.startsWith("Mac");
 
       if (isWindows) {
-        // PowerShell: read primer file and pass to claude
-        const psCommand = `$primer = Get-Content -Raw '${primerPath.replace(/'/g, "''")}'; claude --dangerously-skip-permissions $primer`;
-        const cmd = Command.create("powershell", [
-          "-NoExit",
-          "-Command",
-          psCommand,
+        // Windows: use cmd to open a new visible PowerShell window
+        const escapedPath = primerPath.replace(/'/g, "''");
+        const psScript = `$primer = Get-Content -Raw '${escapedPath}'; claude --dangerously-skip-permissions $primer`;
+        const cmd = Command.create("cmd", [
+          "/c", "start", "powershell", "-NoExit", "-Command", psScript,
+        ]);
+        await cmd.spawn();
+      } else if (isMac) {
+        // macOS: write a temp deploy script and open it in Terminal.app
+        const scriptPath = join(auiDir, "deploy.sh");
+        await writeTextFile(scriptPath, `#!/bin/bash\nprimer=$(cat '${primerPath}')\nclaude --dangerously-skip-permissions "$primer"\nexec bash`);
+        const cmd = Command.create("bash", [
+          "-c", `chmod +x '${scriptPath}' && open -a Terminal '${scriptPath}'`,
         ]);
         await cmd.spawn();
       } else {
-        // macOS/Linux: bash
-        const bashCommand = `primer=$(cat '${primerPath}') && claude --dangerously-skip-permissions "$primer"`;
-        const cmd = Command.create("bash", ["-c", bashCommand]);
+        // Linux: try common terminal emulators
+        const escapedPrimer = primerPath.replace(/'/g, "'\\''");
+        const innerCmd = `bash -c 'primer=$(cat \\\"${escapedPrimer}\\\"); claude --dangerously-skip-permissions \"$primer\"; exec bash'`;
+        const cmd = Command.create("bash", [
+          "-c",
+          `x-terminal-emulator -e ${innerCmd} 2>/dev/null || gnome-terminal -- ${innerCmd} 2>/dev/null || xterm -e ${innerCmd}`,
+        ]);
         await cmd.spawn();
       }
 
@@ -985,7 +997,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
               style={{ ...inputStyle, resize: "vertical" }}
               value={deployPrompt}
               onChange={(e) => setDeployPrompt(e.target.value)}
-              placeholder="Tell the team what to accomplish... (overrides launch prompt if set)"
+              placeholder="Tell the team what to accomplish..."
             />
           </div>
 
