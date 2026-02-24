@@ -18,8 +18,8 @@ export function ValidationBanner() {
   return (
     <div
       style={{
-        background: "rgba(244, 67, 54, 0.1)",
-        border: "1px solid #f44336",
+        background: "rgba(248, 81, 73, 0.1)",
+        border: "1px solid #f85149",
         padding: "8px 16px",
         borderRadius: 4,
         margin: "8px 8px 0 8px",
@@ -37,7 +37,7 @@ export function ValidationBanner() {
           right: 8,
           background: "none",
           border: "none",
-          color: "#f44336",
+          color: "#f85149",
           cursor: "pointer",
           fontSize: 16,
           lineHeight: 1,
@@ -51,7 +51,7 @@ export function ValidationBanner() {
       <div
         style={{
           fontWeight: 600,
-          color: "#f44336",
+          color: "#f85149",
           marginBottom: 4,
           fontSize: 12,
           textTransform: "uppercase",

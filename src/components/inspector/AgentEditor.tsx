@@ -35,14 +35,15 @@ const labelStyle: CSSProperties = {
 };
 
 const inputStyle: CSSProperties = {
-  background: "#1a1a2e",
-  border: "1px solid #2a2a4a",
-  color: "white",
+  background: "var(--bg-primary, #0d1117)",
+  border: "1px solid var(--border-color, #21262d)",
+  color: "var(--text-primary, #e6edf3)",
   padding: 8,
-  borderRadius: 4,
+  borderRadius: 6,
   width: "100%",
   fontSize: 13,
   outline: "none",
+  transition: "border-color 0.15s",
 };
 
 const fieldStyle: CSSProperties = {
@@ -310,12 +311,13 @@ export function AgentEditor({ node }: AgentEditorProps) {
               padding: "2px 10px",
               fontSize: 10,
               fontWeight: 600,
-              background: generating ? "var(--border-color)" : "linear-gradient(135deg, #9c27b0, #673ab7)",
+              background: generating ? "var(--border-color)" : "var(--accent-purple)",
               color: "white",
               border: "none",
               borderRadius: 10,
               cursor: generating || !name.trim() ? "default" : "pointer",
               opacity: generating || !name.trim() ? 0.5 : 1,
+              transition: "opacity 0.15s",
             }}
           >
             {generating ? "Generating..." : "Generate"}
@@ -542,13 +544,13 @@ export function AgentEditor({ node }: AgentEditorProps) {
           style={{
             marginBottom: 16,
             padding: 8,
-            background: "rgba(244,67,54,0.1)",
-            border: "1px solid rgba(244,67,54,0.3)",
+            background: "rgba(248,81,73,0.1)",
+            border: "1px solid rgba(248,81,73,0.3)",
             borderRadius: 4,
           }}
         >
           {errors.map((err, i) => (
-            <div key={i} style={{ color: "#f44336", fontSize: 12 }}>
+            <div key={i} style={{ color: "#f85149", fontSize: 12 }}>
               {err}
             </div>
           ))}

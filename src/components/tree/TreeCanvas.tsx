@@ -408,7 +408,7 @@ export function TreeCanvas() {
           alignItems: "center",
           justifyContent: "center",
           height: "100%",
-          color: "#f44336",
+          color: "#f85149",
           fontSize: 14,
           padding: 32,
           textAlign: "center",
@@ -444,7 +444,7 @@ export function TreeCanvas() {
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#2a2a4a" gap={20} size={1} />
+        <Background color="#21262d" gap={20} size={1} />
         <Controls
           position="bottom-left"
           className="aui-controls"
@@ -457,15 +457,15 @@ export function TreeCanvas() {
             const kind = auiNode?.kind;
             if (kind === "group") {
               const pid = auiNode?.parentId;
-              if (pid && pid !== "root") return "#ff9800";
+              if (pid && pid !== "root") return "#f0883e";
               return "#4a9eff";
             }
             const colors: Record<string, string> = {
-              agent: "#ff9800",
-              skill: "#4caf50",
-              settings: "#607d8b",
-              human: "#ffc107",
-              context: "#9c27b0",
+              agent: "#f0883e",
+              skill: "#3fb950",
+              settings: "#6e7681",
+              human: "#d29922",
+              context: "#8b5cf6",
             };
             return (kind && colors[kind]) || "#4a9eff";
           }}
@@ -473,9 +473,9 @@ export function TreeCanvas() {
           nodeBorderRadius={4}
           maskColor="rgba(10, 10, 30, 0.65)"
           style={{
-            background: "linear-gradient(135deg, rgba(22, 33, 62, 0.95) 0%, rgba(15, 15, 42, 0.95) 100%)",
+            background: "linear-gradient(135deg, rgba(21, 27, 35, 0.95) 0%, rgba(13, 17, 23, 0.95) 100%)",
             borderRadius: 12,
-            border: "1px solid rgba(74, 158, 255, 0.12)",
+            border: "1px solid var(--border-color)",
             boxShadow: "0 4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
             backdropFilter: "blur(12px)",
             overflow: "hidden",
@@ -498,33 +498,49 @@ export function TreeCanvas() {
         >
           <div
             style={{
-              background: "rgba(15, 15, 42, 0.85)",
+              background: "rgba(13, 17, 23, 0.9)",
               borderRadius: 16,
-              padding: "40px 48px",
+              padding: "48px 56px",
               textAlign: "center",
-              border: "1px solid rgba(74, 158, 255, 0.2)",
+              border: "1px solid var(--border-color)",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+              backdropFilter: "blur(12px)",
             }}
           >
             <div
               style={{
-                fontSize: 24,
+                fontSize: 28,
                 fontWeight: 700,
                 color: "var(--text-primary)",
-                marginBottom: 12,
+                marginBottom: 8,
+                letterSpacing: "-0.01em",
               }}
             >
               Welcome to AUI
             </div>
             <div
               style={{
-                fontSize: 14,
+                fontSize: 13,
                 color: "var(--text-secondary)",
-                lineHeight: 1.6,
+                marginBottom: 24,
               }}
             >
-              Double-click to create your first team
-              <br />
-              or use <span style={{ color: "var(--accent-blue)" }}>+</span> in the toolbar
+              Visual manager for Claude Code agent teams
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                fontSize: 13,
+                color: "var(--text-secondary)",
+                lineHeight: 1.8,
+              }}
+            >
+              <span>Double-click the canvas to create a team</span>
+              <span>
+                or press <kbd style={{ background: "var(--bg-surface, #1c2333)", padding: "2px 6px", borderRadius: 4, fontSize: 12, border: "1px solid var(--border-color)" }}>Ctrl+N</kbd> to open the create dialog
+              </span>
             </div>
           </div>
         </div>
@@ -541,14 +557,15 @@ export function TreeCanvas() {
             display: "flex",
             gap: 8,
             alignItems: "center",
-            background: "rgba(15, 15, 42, 0.95)",
-            border: "1px solid #9c27b0",
+            background: "rgba(13, 17, 23, 0.95)",
+            border: "1px solid #8b5cf6",
             borderRadius: 10,
             padding: "8px 16px",
-            boxShadow: "0 4px 20px rgba(156, 39, 176, 0.3)",
+            boxShadow: "0 4px 20px rgba(139, 92, 246, 0.25)",
+            backdropFilter: "blur(12px)",
           }}
         >
-          <span style={{ fontSize: 12, color: "#9c27b0", fontWeight: 600 }}>
+          <span style={{ fontSize: 12, color: "#8b5cf6", fontWeight: 600 }}>
             {multiSelectedNodeIds.size} selected
           </span>
           <button
@@ -556,7 +573,7 @@ export function TreeCanvas() {
             disabled={generatingAll}
             style={{
               padding: "6px 14px",
-              background: generatingAll ? "var(--border-color)" : "linear-gradient(135deg, #9c27b0, #673ab7)",
+              background: generatingAll ? "var(--border-color)" : "var(--accent-purple)",
               color: "white",
               border: "none",
               borderRadius: 6,

@@ -1,18 +1,32 @@
 :root {
-  --bg-primary: #1a1a2e;
-  --bg-secondary: #16213e;
-  --bg-surface: #0f3460;
-  --text-primary: #e0e0e0;
-  --text-secondary: #a0a0a0;
+  /* Backgrounds — blue-tinted darks */
+  --bg-primary: #0d1117;
+  --bg-secondary: #151b23;
+  --bg-surface: #1c2333;
+  --bg-elevated: #222d3d;
+  /* Text */
+  --text-primary: #e6edf3;
+  --text-secondary: #7d8590;
+  --text-tertiary: #484f58;
+  /* Accents */
   --accent-blue: #4a9eff;
-  --accent-green: #4caf50;
-  --accent-gold: #ffc107;
-  --accent-purple: #9c27b0;
-  --accent-gray: #607d8b;
-  --accent-orange: #ff9800;
-  --border-color: #2a2a4a;
+  --accent-green: #3fb950;
+  --accent-gold: #d29922;
+  --accent-purple: #8b5cf6;
+  --accent-gray: #6e7681;
+  --accent-orange: #f0883e;
+  --accent-danger: #f85149;
+  /* Borders */
+  --border-color: #21262d;
+  --border-hover: #363b42;
+  /* Layout */
   --toolbar-height: 48px;
-  --inspector-width: 420px;
+  --inspector-width: 480px;
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 }
 
 * {
@@ -28,9 +42,11 @@ html, body, #root {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app {
@@ -74,7 +90,7 @@ body {
   border-left: 1px solid var(--border-color);
   padding: 16px;
   overflow-y: auto;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   transition: width 0.2s ease;
 }
 
@@ -123,8 +139,8 @@ body {
 /* ── Controls overrides ─────────────────────────────── */
 .aui-controls {
   border-radius: 10px !important;
-  border: 1px solid rgba(74, 158, 255, 0.12) !important;
-  background: linear-gradient(135deg, rgba(22, 33, 62, 0.95) 0%, rgba(15, 15, 42, 0.95) 100%) !important;
+  border: 1px solid var(--border-color) !important;
+  background: linear-gradient(135deg, rgba(21, 27, 35, 0.95) 0%, rgba(13, 17, 23, 0.95) 100%) !important;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
   overflow: hidden;
   backdrop-filter: blur(12px);

@@ -342,9 +342,9 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
                     padding: "2px 8px",
                     fontSize: 10,
                     fontWeight: 600,
-                    background: job.enabled ? "rgba(76,175,80,0.15)" : "rgba(255,255,255,0.1)",
-                    color: job.enabled ? "#4caf50" : "var(--text-secondary)",
-                    border: `1px solid ${job.enabled ? "rgba(76,175,80,0.3)" : "var(--border-color)"}`,
+                    background: job.enabled ? "rgba(63,185,80,0.15)" : "rgba(255,255,255,0.1)",
+                    color: job.enabled ? "#3fb950" : "var(--text-secondary)",
+                    border: `1px solid ${job.enabled ? "rgba(63,185,80,0.3)" : "var(--border-color)"}`,
                     borderRadius: 10,
                     cursor: "pointer",
                   }}

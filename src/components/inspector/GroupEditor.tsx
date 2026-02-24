@@ -18,14 +18,15 @@ const labelStyle: CSSProperties = {
 };
 
 const inputStyle: CSSProperties = {
-  background: "#1a1a2e",
-  border: "1px solid #2a2a4a",
-  color: "white",
+  background: "var(--bg-primary, #0d1117)",
+  border: "1px solid var(--border-color, #21262d)",
+  color: "var(--text-primary, #e6edf3)",
   padding: 8,
-  borderRadius: 4,
+  borderRadius: 6,
   width: "100%",
   fontSize: 13,
   outline: "none",
+  transition: "border-color 0.15s",
 };
 
 const fieldStyle: CSSProperties = {
@@ -65,6 +66,7 @@ export function GroupEditor({ node }: GroupEditorProps) {
   const removeSkillFromNode = useTreeStore((s) => s.removeSkillFromNode);
   const saveTreeMetadata = useTreeStore((s) => s.saveTreeMetadata);
   const createSkillNode = useTreeStore((s) => s.createSkillNode);
+  const addNode = useTreeStore((s) => s.addNode);
   const exportTeamAsSkill = useTreeStore((s) => s.exportTeamAsSkill);
   const generateTeamSkillFiles = useTreeStore((s) => s.generateTeamSkillFiles);
   const selectNode = useUiStore((s) => s.selectNode);
@@ -234,6 +236,29 @@ export function GroupEditor({ node }: GroupEditorProps) {
 
   const handleAddSkill = () => {
     if (!addSkillId) return;
+    // Ensure the skill exists in the tree store so OrgNode can display its name
+    if (!nodes.has(addSkillId)) {
+      const match = allSkills.find((s) => s.id === addSkillId);
+      if (match) {
+        const fsMatch = fsSkills.find((f) => f.id === addSkillId);
+        addNode({
+          id: addSkillId,
+          name: match.name,
+          kind: "skill",
+          parentId: "root",
+          team: null,
+          sourcePath: fsMatch?.sourcePath ?? "",
+          config: null,
+          promptBody: match.description,
+          tags: [],
+          lastModified: Date.now(),
+          validationErrors: [],
+          assignedSkills: [],
+          variables: [],
+          launchPrompt: "",
+        });
+      }
+    }
     assignSkillToNode(node.id, addSkillId);
     setAddSkillId("");
   };
@@ -468,17 +493,12 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       const isWindows = navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
       const isMac = navigator.userAgent.includes("Mac") || navigator.platform.startsWith("Mac");
 
-      // NOTE: Tauri v2's Command.create().spawn() hardcodes CREATE_NO_WINDOW on Windows,
-      // so ALL processes spawned that way are invisible. We MUST use the shell plugin's
-      // open() function instead, which uses ShellExecuteExW with SW_SHOWNORMAL.
-      const { open } = await import("@tauri-apps/plugin-shell");
+      // Use Rust-side open_terminal command which uses CREATE_NEW_CONSOLE on Windows
+      // to guarantee a visible terminal window (bypasses Tauri's CREATE_NO_WINDOW).
+      const { invoke } = await import("@tauri-apps/api/core");
 
       if (isWindows) {
-        // Convert forward-slash paths to Windows backslashes for script content
         const winPrimerPath = primerPath.replace(/\//g, "\\");
-        const winAuiDir = auiDir.replace(/\//g, "\\");
-
-        // 1. Write the PowerShell deploy script
         const scriptPath = join(auiDir, "deploy.ps1");
         const winScriptPath = scriptPath.replace(/\//g, "\\");
         const escapedPrimerPath = winPrimerPath.replace(/'/g, "''");
@@ -491,36 +511,9 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
           `claude --dangerously-skip-permissions $primer`,
         ].join("\r\n");
         await writeTextFile(scriptPath, ps1Content);
-
-        // 2. Write a .bat launcher — open() will execute it in a visible cmd window
-        //    which then spawns a visible PowerShell window via 'start'
-        const batPath = join(auiDir, "deploy-launcher.bat");
-        const batContent = [
-          "@echo off",
-          `start "AUI Deploy" powershell.exe -NoExit -ExecutionPolicy Bypass -File "${winScriptPath}"`,
-        ].join("\r\n");
-        await writeTextFile(batPath, batContent);
-
-        // 3. open() uses ShellExecuteExW — bypasses CREATE_NO_WINDOW entirely
-        await open(batPath);
-      } else if (isMac) {
-        // macOS: write a deploy script and open it in Terminal.app via shell open()
-        const scriptPath = join(auiDir, "deploy.sh");
-        const shContent = [
-          "#!/bin/bash",
-          `primer=$(cat '${primerPath}')`,
-          `claude --dangerously-skip-permissions "$primer"`,
-          "exec bash",
-        ].join("\n");
-        await writeTextFile(scriptPath, shContent);
-
-        const { Command } = await import("@tauri-apps/plugin-shell");
-        const chmod = Command.create("bash", ["-c", `chmod +x '${scriptPath}'`]);
-        await chmod.execute();
-        const cmd = Command.create("bash", ["-c", `open -a Terminal '${scriptPath}'`]);
-        await cmd.spawn();
+        await invoke("open_terminal", { scriptPath: winScriptPath });
       } else {
-        // Linux: write a deploy script and open in available terminal emulator
+        // macOS / Linux: write a shell script
         const scriptPath = join(auiDir, "deploy.sh");
         const shContent = [
           "#!/bin/bash",
@@ -530,14 +523,11 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         ].join("\n");
         await writeTextFile(scriptPath, shContent);
 
+        // Make executable, then open in terminal via Rust command
         const { Command } = await import("@tauri-apps/plugin-shell");
         const chmod = Command.create("bash", ["-c", `chmod +x '${scriptPath}'`]);
         await chmod.execute();
-        const cmd = Command.create("bash", [
-          "-c",
-          `x-terminal-emulator -e '${scriptPath}' 2>/dev/null || gnome-terminal -- '${scriptPath}' 2>/dev/null || xterm -e '${scriptPath}'`,
-        ]);
-        await cmd.spawn();
+        await invoke("open_terminal", { scriptPath });
       }
 
       setDeployOutput((prev) => [
@@ -565,6 +555,147 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
   return (
     <div>
+      {/* Deploy — only for top-level teams, shown FIRST for prominence */}
+      {!isMember && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={sectionHeaderStyle}>Deploy</div>
+
+          {/* Deploy prompt box */}
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ ...labelStyle, fontSize: 10 }}>Deploy Prompt</label>
+            <textarea
+              rows={2}
+              style={{ ...inputStyle, resize: "vertical" }}
+              value={deployPrompt}
+              onChange={(e) => setDeployPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.ctrlKey && e.key === "Enter" && !deploying) {
+                  e.preventDefault();
+                  handleDeploy();
+                }
+              }}
+              placeholder="Tell the team what to accomplish... (Ctrl+Enter to deploy)"
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <button
+              onClick={handleDeploy}
+              disabled={deploying}
+              style={{
+                flex: 2,
+                padding: "10px 16px",
+                background: deploying
+                  ? "var(--border-color)"
+                  : "var(--accent-orange)",
+                color: "white",
+                border: "none",
+                borderRadius: 6,
+                cursor: deploying ? "default" : "pointer",
+                fontSize: 13,
+                fontWeight: 600,
+                transition: "opacity 0.15s",
+              }}
+            >
+              {deploying ? "Preparing..." : "Deploy Team"}
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              style={{
+                flex: 1,
+                padding: "10px 16px",
+                background: exporting
+                  ? "var(--border-color)"
+                  : "transparent",
+                color: exporting ? "var(--text-secondary)" : "var(--accent-green)",
+                border: `1px solid ${exporting ? "var(--border-color)" : "var(--accent-green)"}`,
+                borderRadius: 6,
+                cursor: exporting ? "default" : "pointer",
+                fontSize: 13,
+                fontWeight: 600,
+                transition: "all 0.15s",
+              }}
+            >
+              {exporting ? "Exporting..." : "Export"}
+            </button>
+          </div>
+
+          {/* Generate skill files button */}
+          <button
+            onClick={handleGenerateSkills}
+            disabled={generatingSkills}
+            style={{
+              width: "100%",
+              padding: "7px 12px",
+              marginBottom: 6,
+              background: "transparent",
+              color: "var(--accent-purple)",
+              border: "1px dashed var(--accent-purple)",
+              borderRadius: 6,
+              cursor: generatingSkills ? "default" : "pointer",
+              fontSize: 11,
+              fontWeight: 600,
+              opacity: generatingSkills ? 0.5 : 1,
+              transition: "opacity 0.15s",
+            }}
+          >
+            {generatingSkills ? "Generating..." : "Generate Skill Files"}
+          </button>
+
+          <div
+            style={{
+              fontSize: 10,
+              color: "var(--text-secondary)",
+              marginBottom: 4,
+              lineHeight: 1.4,
+            }}
+          >
+            <b>Deploy</b> opens a terminal with the full primer. <b>Export</b> creates a reusable team skill. <b>Skill Files</b> creates individual SKILL.md for each agent.
+          </div>
+
+          {exportedPath && (
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--accent-green)",
+                marginBottom: 4,
+                wordBreak: "break-all",
+              }}
+            >
+              Exported to: {exportedPath}
+            </div>
+          )}
+
+          {/* Deploy output terminal */}
+          {deployOutput.length > 0 && (
+            <div
+              style={{
+                maxHeight: 160,
+                overflow: "auto",
+                background: "var(--bg-primary)",
+                border: "1px solid var(--border-color)",
+                borderRadius: 6,
+                padding: 10,
+                marginTop: 4,
+                fontFamily: "'Consolas', 'Monaco', monospace",
+                fontSize: 11,
+                lineHeight: 1.5,
+                color: "var(--text-secondary)",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+              }}
+            >
+              {deployOutput.map((line, i) => (
+                <div key={i} style={{ color: line.startsWith("[error]") ? "var(--accent-danger, #f85149)" : line.startsWith("[stderr]") ? "var(--accent-gold)" : "#a0ffa0" }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Info Section */}
       <div style={sectionHeaderStyle}>{isMember ? "Agent Info" : "Team Info"}</div>
 
@@ -587,12 +718,13 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
               padding: "2px 10px",
               fontSize: 10,
               fontWeight: 600,
-              background: generating ? "var(--border-color)" : "linear-gradient(135deg, #9c27b0, #673ab7)",
+              background: generating ? "var(--border-color)" : "var(--accent-purple)",
               color: "white",
               border: "none",
               borderRadius: 10,
               cursor: generating || !name.trim() ? "default" : "pointer",
               opacity: generating || !name.trim() ? 0.5 : 1,
+              transition: "opacity 0.15s",
             }}
           >
             {generating ? "Generating..." : "Generate"}
@@ -864,8 +996,8 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         </div>
       )}
 
-      {/* Auto-fill agents */}
-      <div style={sectionHeaderStyle}>Auto-Fill Agents</div>
+      {/* Generate agents with AI */}
+      <div style={sectionHeaderStyle}>Generate with AI</div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "flex-end" }}>
         <div style={{ width: 70 }}>
           <label style={{ ...labelStyle, fontSize: 10 }}>Count</label>
@@ -884,7 +1016,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
           style={{
             flex: 1,
             padding: "8px 12px",
-            background: autoFilling ? "var(--border-color)" : "linear-gradient(135deg, #9c27b0, #673ab7)",
+            background: autoFilling ? "var(--border-color)" : "var(--accent-purple)",
             color: "white",
             border: "none",
             borderRadius: 6,
@@ -892,9 +1024,10 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
             fontSize: 12,
             fontWeight: 600,
             opacity: autoFilling || !name.trim() ? 0.5 : 1,
+            transition: "opacity 0.15s",
           }}
         >
-          {autoFilling ? "Generating..." : "Auto-Fill Agents"}
+          {autoFilling ? "Generating..." : "Generate Agents"}
         </button>
       </div>
 
@@ -1026,140 +1159,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         )}
       </div>
 
-      {/* Deploy — only for top-level teams */}
-      {!isMember && (
-        <>
-          <div style={sectionHeaderStyle}>Deploy</div>
-
-          {/* Deploy prompt box */}
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ ...labelStyle, fontSize: 10 }}>Deploy Prompt</label>
-            <textarea
-              rows={3}
-              style={{ ...inputStyle, resize: "vertical" }}
-              value={deployPrompt}
-              onChange={(e) => setDeployPrompt(e.target.value)}
-              placeholder="Tell the team what to accomplish..."
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            <button
-              onClick={handleDeploy}
-              disabled={deploying}
-              style={{
-                flex: 2,
-                padding: "10px 16px",
-                background: deploying
-                  ? "var(--border-color)"
-                  : "linear-gradient(135deg, #ff9800 0%, #e65100 100%)",
-                color: "white",
-                border: "none",
-                borderRadius: 6,
-                cursor: deploying ? "default" : "pointer",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              {deploying ? "Preparing..." : "Deploy Team"}
-            </button>
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              style={{
-                flex: 1,
-                padding: "10px 16px",
-                background: exporting
-                  ? "var(--border-color)"
-                  : "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
-                color: "white",
-                border: "none",
-                borderRadius: 6,
-                cursor: exporting ? "default" : "pointer",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              {exporting ? "Exporting..." : "Export Skill"}
-            </button>
-          </div>
-
-          {/* Generate skill files button */}
-          <button
-            onClick={handleGenerateSkills}
-            disabled={generatingSkills}
-            style={{
-              width: "100%",
-              padding: "8px 12px",
-              marginBottom: 8,
-              background: generatingSkills ? "var(--border-color)" : "transparent",
-              color: "var(--accent-purple)",
-              border: "1px dashed var(--accent-purple)",
-              borderRadius: 4,
-              cursor: generatingSkills ? "default" : "pointer",
-              fontSize: 11,
-              fontWeight: 600,
-              opacity: generatingSkills ? 0.5 : 1,
-            }}
-          >
-            {generatingSkills ? "Generating..." : "Generate Individual Skill Files"}
-          </button>
-
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--text-secondary)",
-              marginBottom: 6,
-              lineHeight: 1.4,
-            }}
-          >
-            <b>Deploy</b> generates skill files, builds a primer, and opens a terminal with{" "}
-            <code style={{ fontSize: 10 }}>claude --dangerously-skip-permissions</code> ready to go.{" "}
-            <b>Export</b> creates a single reusable team skill.{" "}
-            <b>Skill Files</b> creates individual SKILL.md for each agent.
-          </div>
-
-          {exportedPath && (
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--accent-green)",
-                marginBottom: 6,
-                wordBreak: "break-all",
-              }}
-            >
-              Exported to: {exportedPath}
-            </div>
-          )}
-
-          {/* Deploy output terminal */}
-          {deployOutput.length > 0 && (
-            <div
-              style={{
-                maxHeight: 200,
-                overflow: "auto",
-                background: "#0d0d1a",
-                border: "1px solid var(--border-color)",
-                borderRadius: 6,
-                padding: 10,
-                marginTop: 4,
-                fontFamily: "'Consolas', 'Monaco', monospace",
-                fontSize: 11,
-                lineHeight: 1.5,
-                color: "var(--text-secondary)",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-all",
-              }}
-            >
-              {deployOutput.map((line, i) => (
-                <div key={i} style={{ color: line.startsWith("[error]") ? "#f44336" : line.startsWith("[stderr]") ? "var(--accent-gold)" : "#a0ffa0" }}>
-                  {line}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+      {/* Deploy section moved to top of editor */}
     </div>
   );
 }

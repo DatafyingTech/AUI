@@ -73,7 +73,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               padding: "8px 16px",
               background: "transparent",
               border: "none",
-              color: item.danger ? "#f44336" : "var(--text-primary)",
+              color: item.danger ? "#f85149" : "var(--text-primary)",
               fontSize: 13,
               textAlign: "left",
               cursor: "pointer",

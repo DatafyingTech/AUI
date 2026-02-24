@@ -16,7 +16,7 @@ interface AppSettings {
 const DEFAULT_SETTINGS: AppSettings = {
   apiKey: "",
   teamColor: "#4a9eff",
-  agentColor: "#ff9800",
+  agentColor: "#f0883e",
   accentColor: "#4a9eff",
   autoSave: true,
 };
@@ -31,15 +31,16 @@ const labelStyle: CSSProperties = {
 };
 
 const inputStyle: CSSProperties = {
-  background: "#1a1a2e",
-  border: "1px solid #2a2a4a",
-  color: "white",
+  background: "var(--bg-primary, #0d1117)",
+  border: "1px solid var(--border-color, #21262d)",
+  color: "var(--text-primary, #e6edf3)",
   padding: 8,
-  borderRadius: 4,
+  borderRadius: 6,
   width: "100%",
   fontSize: 13,
   outline: "none",
   boxSizing: "border-box",
+  transition: "border-color 0.15s",
 };
 
 const sectionStyle: CSSProperties = {

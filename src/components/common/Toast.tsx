@@ -50,7 +50,7 @@ export function toast(message: string, type: ToastType = "info") {
 // ---- colors ----
 const borderColors: Record<ToastType, string> = {
   success: "var(--accent-green)",
-  error: "#f44336",
+  error: "#f85149",
   info: "var(--accent-blue)",
 };
 

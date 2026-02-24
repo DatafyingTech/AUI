@@ -12,12 +12,12 @@ import { toast } from "@/components/common/Toast";
 import type { NodeKind, AuiNode } from "@/types/aui-node";
 
 const kindColors: Record<NodeKind, string> = {
-  human: "var(--accent-gold)",
-  agent: "var(--accent-orange)",
-  skill: "var(--accent-green)",
-  context: "var(--accent-purple)",
-  settings: "var(--accent-gray)",
-  group: "var(--accent-blue)",
+  human: "#d29922",
+  agent: "#f0883e",
+  skill: "#3fb950",
+  context: "#8b5cf6",
+  settings: "#6e7681",
+  group: "#4a9eff",
 };
 
 const badgeStyle = (kind: NodeKind): CSSProperties => ({
@@ -182,8 +182,8 @@ export function InspectorPanel() {
                 onClick={handleDelete}
                 style={{
                   background: "transparent",
-                  border: "1px solid rgba(244,67,54,0.5)",
-                  color: "#f44336",
+                  border: "1px solid rgba(248,81,73,0.5)",
+                  color: "#f85149",
                   borderRadius: 4,
                   cursor: "pointer",
                   padding: "2px 8px",
@@ -251,14 +251,15 @@ const rootLabelStyle: CSSProperties = {
 };
 
 const rootInputStyle: CSSProperties = {
-  background: "#1a1a2e",
-  border: "1px solid #2a2a4a",
-  color: "white",
+  background: "var(--bg-primary, #0d1117)",
+  border: "1px solid var(--border-color, #21262d)",
+  color: "var(--text-primary, #e6edf3)",
   padding: 8,
-  borderRadius: 4,
+  borderRadius: 6,
   width: "100%",
   fontSize: 13,
   outline: "none",
+  transition: "border-color 0.15s",
 };
 
 const rootSectionStyle: CSSProperties = {
@@ -273,11 +274,46 @@ const rootSectionStyle: CSSProperties = {
   fontWeight: 600,
 };
 
+function CollapsibleSection({
+  title,
+  count,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div
+        onClick={() => setOpen(!open)}
+        style={{
+          ...rootSectionStyle,
+          cursor: "pointer",
+          userSelect: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span style={{ fontSize: 10, transition: "transform 0.15s", display: "inline-block", transform: open ? "rotate(90deg)" : "rotate(0)" }}>
+          {"\u25B6"}
+        </span>
+        {title}{count !== undefined ? ` (${count})` : ""}
+      </div>
+      {open && <div style={{ paddingTop: 4 }}>{children}</div>}
+    </div>
+  );
+}
+
 function RootEditor({ node }: { node: AuiNode }) {
   const updateNode = useTreeStore((s) => s.updateNode);
   const nodes = useTreeStore((s) => s.nodes);
   const projectPath = useTreeStore((s) => s.projectPath);
-  const createGroupNode = useTreeStore((s) => s.createGroupNode);
+  const addNodeToTree = useTreeStore((s) => s.addNode);
   const assignSkillToNode = useTreeStore((s) => s.assignSkillToNode);
   const removeSkillFromNode = useTreeStore((s) => s.removeSkillFromNode);
   const saveTreeMetadata = useTreeStore((s) => s.saveTreeMetadata);
@@ -396,18 +432,15 @@ Make team and agent names descriptive and specific to the company context. Use t
 
       const result = await generateText(apiKey, prompt, { maxTokens: 2048 });
 
-      // Parse the JSON response
       const jsonMatch = result.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No valid JSON in response");
       const parsed = JSON.parse(jsonMatch[0]);
 
       if (!Array.isArray(parsed.teams)) throw new Error("Invalid response format");
 
-      // Create team and agent nodes
       const { createGroupNode: createGroup } = useTreeStore.getState();
       for (const team of parsed.teams) {
         createGroup(team.name, team.description, "root");
-        // Find the just-created group
         const { nodes: currentNodes } = useTreeStore.getState();
         let teamId: string | null = null;
         for (const [id, n] of currentNodes) {
@@ -441,7 +474,6 @@ Make team and agent names descriptive and specific to the company context. Use t
         return;
       }
 
-      // Collect global skills for context
       const globalSkillNames = node.assignedSkills
         .map((id) => nodes.get(id)?.name ?? id)
         .filter(Boolean);
@@ -513,256 +545,270 @@ Make team and agent names descriptive and specific. Use title case for names. Ea
 
   const handleAddSkill = () => {
     if (!addSkillId) return;
+    // Ensure the skill exists in the tree store so OrgNode can display its name
+    if (!nodes.has(addSkillId)) {
+      const match = allSkills.find((s) => s.id === addSkillId);
+      if (match) {
+        const fsMatch = fsSkills.find((f) => f.id === addSkillId);
+        addNodeToTree({
+          id: addSkillId,
+          name: match.name,
+          kind: "skill",
+          parentId: "root",
+          team: null,
+          sourcePath: fsMatch?.sourcePath ?? "",
+          config: null,
+          promptBody: match.description,
+          tags: [],
+          lastModified: Date.now(),
+          validationErrors: [],
+          assignedSkills: [],
+          variables: [],
+          launchPrompt: "",
+        });
+      }
+    }
     assignSkillToNode(node.id, addSkillId);
     setAddSkillId("");
   };
 
+  const teamChildren = children.filter((c) => c.kind === "group");
+
   return (
     <div>
-      {/* Owner Info */}
-      <div style={rootSectionStyle}>Owner</div>
-
+      {/* Company / Project Info */}
       <div style={{ marginBottom: 16 }}>
-        <label style={rootLabelStyle}>Name</label>
+        <label style={rootLabelStyle}>Company / Project Name</label>
         <input
           style={rootInputStyle}
           value={ownerName}
           onChange={(e) => setOwnerName(e.target.value)}
+          placeholder="e.g. Acme Corp, My SaaS Project"
         />
       </div>
 
       <div style={{ marginBottom: 16 }}>
         <label style={rootLabelStyle}>Description</label>
         <textarea
-          rows={2}
+          rows={3}
           style={{ ...rootInputStyle, resize: "vertical" }}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Company or team lead description..."
+          placeholder="Describe your company, project goals, or the work being done..."
         />
       </div>
 
-      {/* Auto-fill with AI */}
-      <div style={rootSectionStyle}>Auto-Fill with AI</div>
-      <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
-        Use AI to generate teams and agents based on your company description.
-      </div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
-        <div style={{ flex: 1 }}>
-          <label style={{ ...rootLabelStyle, fontSize: 10 }}>Teams</label>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={teamCount}
-            onChange={(e) => setTeamCount(Math.max(1, Math.min(10, Number(e.target.value))))}
-            style={{ ...rootInputStyle, textAlign: "center" }}
-          />
+      {/* Global Skills — collapsible */}
+      <CollapsibleSection title="Global Skills" count={assignedSkills.length} defaultOpen={assignedSkills.length > 0}>
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.4 }}>
+          Skills assigned here are visible to every team and agent.
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={{ ...rootLabelStyle, fontSize: 10 }}>Agents per team</label>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={agentsPer}
-            onChange={(e) => setAgentsPer(Math.max(1, Math.min(10, Number(e.target.value))))}
-            style={{ ...rootInputStyle, textAlign: "center" }}
-          />
-        </div>
-      </div>
-      <button
-        onClick={handleAutoFill}
-        disabled={autoFilling}
-        style={{
-          width: "100%",
-          padding: "10px 16px",
-          marginBottom: 8,
-          background: autoFilling
-            ? "var(--border-color)"
-            : "linear-gradient(135deg, #9c27b0 0%, #673ab7 100%)",
-          color: "white",
-          border: "none",
-          borderRadius: 6,
-          cursor: autoFilling ? "default" : "pointer",
-          fontSize: 13,
-          fontWeight: 600,
-        }}
-      >
-        {autoFilling ? "Generating..." : `Auto-Fill (${teamCount} teams x ${agentsPer} agents)`}
-      </button>
 
-      {/* Smart generation — from goals */}
-      {description.trim() && (
+        {assignedSkills.map((skill) => (
+          <div
+            key={skill.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "6px 8px",
+              background: "rgba(63, 185, 80, 0.05)",
+              border: "1px solid var(--border-color)",
+              borderRadius: 4,
+              marginBottom: 4,
+            }}
+          >
+            <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{skill.name}</span>
+            <button
+              type="button"
+              onClick={() => removeSkillFromNode(node.id, skill.id)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                padding: "0 4px",
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+              title="Remove skill"
+            >
+              x
+            </button>
+          </div>
+        ))}
+
+        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+          <select
+            style={{ ...rootInputStyle, flex: 1 }}
+            value={addSkillId}
+            onChange={(e) => setAddSkillId(e.target.value)}
+          >
+            <option value="">Add a skill...</option>
+            {availableSkills.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleAddSkill}
+            disabled={!addSkillId}
+            style={{
+              padding: "8px 12px",
+              background: addSkillId ? "var(--accent-green)" : "var(--border-color)",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              cursor: addSkillId ? "pointer" : "default",
+              fontSize: 12,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              opacity: addSkillId ? 1 : 0.5,
+            }}
+          >
+            Add
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      {/* Teams — collapsible */}
+      <CollapsibleSection title="Teams" count={teamChildren.length}>
+        {/* Generate with AI */}
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.4 }}>
+          Generate teams with AI or add them manually.
+        </div>
+        <div style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ ...rootLabelStyle, fontSize: 10 }}>Teams</label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={teamCount}
+              onChange={(e) => setTeamCount(Math.max(1, Math.min(10, Number(e.target.value))))}
+              style={{ ...rootInputStyle, textAlign: "center" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ ...rootLabelStyle, fontSize: 10 }}>Agents per team</label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={agentsPer}
+              onChange={(e) => setAgentsPer(Math.max(1, Math.min(10, Number(e.target.value))))}
+              style={{ ...rootInputStyle, textAlign: "center" }}
+            />
+          </div>
+        </div>
         <button
-          onClick={handleGenerateFromGoals}
-          disabled={generatingGoals}
+          onClick={handleAutoFill}
+          disabled={autoFilling}
           style={{
             width: "100%",
-            padding: "10px 16px",
-            marginBottom: 8,
-            background: generatingGoals
-              ? "var(--border-color)"
-              : "linear-gradient(135deg, #ff9800 0%, #e65100 100%)",
+            padding: "9px 16px",
+            marginBottom: 6,
+            background: autoFilling ? "var(--border-color)" : "var(--accent-blue)",
             color: "white",
             border: "none",
             borderRadius: 6,
-            cursor: generatingGoals ? "default" : "pointer",
+            cursor: autoFilling ? "default" : "pointer",
             fontSize: 13,
             fontWeight: 600,
+            transition: "opacity 0.15s",
           }}
         >
-          {generatingGoals ? "Analyzing Goals..." : "Generate Teams to Meet Goals"}
+          {autoFilling ? "Generating..." : `Generate ${teamCount} x ${agentsPer}`}
         </button>
-      )}
-      {!description.trim() && (
-        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.4, fontStyle: "italic" }}>
-          Fill in the Description above to enable goal-based team generation.
-        </div>
-      )}
 
-      {/* Global Skills — visible to all teams/agents */}
-      <div style={rootSectionStyle}>
-        Global Skills ({assignedSkills.length})
-      </div>
-
-      <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
-        Skills assigned here are visible to every team and agent in the tree.
-      </div>
-
-      {assignedSkills.length === 0 && (
-        <div style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 8, fontStyle: "italic" }}>
-          No global skills assigned
-        </div>
-      )}
-
-      {assignedSkills.map((skill) => (
-        <div
-          key={skill.id}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "6px 8px",
-            background: "rgba(74, 158, 255, 0.05)",
-            border: "1px solid var(--border-color)",
-            borderRadius: 4,
-            marginBottom: 4,
-          }}
-        >
-          <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{skill.name}</span>
+        {description.trim() && (
           <button
-            type="button"
-            onClick={() => removeSkillFromNode(node.id, skill.id)}
+            onClick={handleGenerateFromGoals}
+            disabled={generatingGoals}
             style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-              padding: "0 4px",
-              fontSize: 14,
-              lineHeight: 1,
+              width: "100%",
+              padding: "9px 16px",
+              marginBottom: 8,
+              background: "transparent",
+              color: generatingGoals ? "var(--text-secondary)" : "var(--accent-orange)",
+              border: `1px solid ${generatingGoals ? "var(--border-color)" : "var(--accent-orange)"}`,
+              borderRadius: 6,
+              cursor: generatingGoals ? "default" : "pointer",
+              fontSize: 13,
+              fontWeight: 600,
             }}
-            title="Remove skill"
           >
-            x
+            {generatingGoals ? "Analyzing Goals..." : "Generate from Description"}
           </button>
-        </div>
-      ))}
+        )}
+        {!description.trim() && (
+          <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.4, fontStyle: "italic" }}>
+            Add a description above to enable goal-based generation.
+          </div>
+        )}
 
-      <div style={{ display: "flex", gap: 6, marginTop: 8, marginBottom: 8 }}>
-        <select
-          style={{ ...rootInputStyle, flex: 1 }}
-          value={addSkillId}
-          onChange={(e) => setAddSkillId(e.target.value)}
-        >
-          <option value="">Select a skill...</option>
-          {availableSkills.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        {/* Team list */}
+        {teamChildren.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            {teamChildren.map((child) => (
+              <div
+                key={child.id}
+                onClick={() => selectNode(child.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 8px",
+                  background: "rgba(74, 158, 255, 0.05)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: 4,
+                  marginBottom: 4,
+                  cursor: "pointer",
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(74, 158, 255, 0.12)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(74, 158, 255, 0.05)"; }}
+              >
+                <span style={{
+                  display: "inline-block",
+                  padding: "1px 6px",
+                  borderRadius: 8,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  color: "white",
+                  background: "var(--accent-blue)",
+                }}>
+                  team
+                </span>
+                <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{child.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <button
-          onClick={handleAddSkill}
-          disabled={!addSkillId}
+          onClick={() => openCreateDialog(node.id)}
           style={{
+            width: "100%",
             padding: "8px 12px",
-            background: addSkillId ? "var(--accent-green)" : "var(--border-color)",
-            color: "white",
-            border: "none",
+            marginTop: 6,
+            background: "transparent",
+            color: "var(--accent-blue)",
+            border: "1px dashed var(--accent-blue)",
             borderRadius: 4,
-            cursor: addSkillId ? "pointer" : "default",
+            cursor: "pointer",
             fontSize: 12,
             fontWeight: 600,
-            whiteSpace: "nowrap",
-            opacity: addSkillId ? 1 : 0.5,
           }}
         >
-          Add
+          + Add Team
         </button>
-      </div>
-
-      {/* Teams */}
-      <div style={rootSectionStyle}>
-        Teams ({children.filter((c) => c.kind === "group").length})
-      </div>
-
-      {children.filter((c) => c.kind === "group").map((child) => (
-        <div
-          key={child.id}
-          onClick={() => selectNode(child.id)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "6px 8px",
-            background: "rgba(74, 158, 255, 0.05)",
-            border: "1px solid var(--border-color)",
-            borderRadius: 4,
-            marginBottom: 4,
-            cursor: "pointer",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(74, 158, 255, 0.12)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(74, 158, 255, 0.05)"; }}
-        >
-          <span style={{
-            display: "inline-block",
-            padding: "1px 6px",
-            borderRadius: 8,
-            fontSize: 10,
-            fontWeight: 600,
-            textTransform: "uppercase",
-            color: "white",
-            background: "var(--accent-blue)",
-          }}>
-            team
-          </span>
-          <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{child.name}</span>
-        </div>
-      ))}
-
-      <button
-        onClick={() => openCreateDialog(node.id)}
-        style={{
-          width: "100%",
-          padding: "8px 12px",
-          marginTop: 8,
-          background: "transparent",
-          color: "var(--accent-blue)",
-          border: "1px dashed var(--accent-blue)",
-          borderRadius: 4,
-          cursor: "pointer",
-          fontSize: 12,
-          fontWeight: 600,
-        }}
-      >
-        + Add Team
-      </button>
+      </CollapsibleSection>
 
       {/* Save */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 24 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 20 }}>
         <button
           onClick={handleSave}
           style={{

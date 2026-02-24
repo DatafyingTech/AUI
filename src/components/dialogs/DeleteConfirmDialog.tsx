@@ -71,7 +71,7 @@ export function DeleteConfirmDialog({ open, nodeName, onClose, onConfirm }: Dele
             onClick={onConfirm}
             style={{
               padding: "8px 16px",
-              background: "#f44336",
+              background: "#f85149",
               border: "none",
               borderRadius: 6,
               color: "#fff",

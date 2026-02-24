@@ -21,14 +21,14 @@ export function detectTeam(name: string): string | null {
 }
 
 const TEAM_COLORS: Record<string, string> = {
-  GSD: "#ff6b6b",
-  "Social Media": "#9c27b0",
-  n8n: "#ff9800",
-  "Incident Response": "#f44336",
-  Datafying: "#00bcd4",
+  GSD: "#f47067",
+  "Social Media": "#8b5cf6",
+  n8n: "#f0883e",
+  "Incident Response": "#f85149",
+  Datafying: "#39d2c0",
   Google: "#4285f4",
-  Launchers: "#607d8b",
-  Social: "#e91e63",
+  Launchers: "#6e7681",
+  Social: "#db61a2",
 };
 
 export function getTeamColor(team: string): string {

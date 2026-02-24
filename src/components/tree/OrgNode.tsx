@@ -6,11 +6,11 @@ import { useTreeStore } from "@/store/tree-store";
 import { getTeamColor } from "@/utils/grouping";
 
 const KIND_COLORS: Record<NodeKind, string> = {
-  agent: "#ff9800",
-  skill: "#4caf50",
-  settings: "#607d8b",
-  human: "#ffc107",
-  context: "#9c27b0",
+  agent: "#f0883e",
+  skill: "#3fb950",
+  settings: "#6e7681",
+  human: "#d29922",
+  context: "#8b5cf6",
   group: "#4a9eff",
 };
 
@@ -39,7 +39,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
   const isMember = isGroup && parentNode?.kind === "group";
 
   // Team nodes = blue, agents-in-teams = orange
-  const color = isMember ? "#ff9800" : KIND_COLORS[node.kind];
+  const color = isMember ? "#f0883e" : KIND_COLORS[node.kind];
 
   // Resolve assigned skill names
   const skillNames: string[] = [];
@@ -82,11 +82,11 @@ function OrgNodeInner({ data, selected }: NodeProps) {
 
   const background = isGroup
     ? isMember
-      ? "rgba(255, 152, 0, 0.06)"
+      ? "rgba(240, 136, 62, 0.06)"
       : "rgba(74, 158, 255, 0.06)"
     : isRoot
-      ? "rgba(255, 193, 7, 0.08)"
-      : "#1e1e3a";
+      ? "rgba(210, 153, 34, 0.08)"
+      : "var(--bg-surface, #1c2333)";
 
   const borderLeftStyle = isGroup
     ? `4px dashed rgba(${hexToRgb(color)}, ${borderOpacity})`
@@ -102,7 +102,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
         width: nodeWidth,
         padding: 12,
         background,
-        border: isMultiSelected ? "1px solid #9c27b0" : "1px solid transparent",
+        border: isMultiSelected ? "1px solid #8b5cf6" : "1px solid transparent",
         borderLeft: borderLeftStyle,
         borderRadius: 8,
         boxShadow: glowStrength !== "none" ? `${glowStrength} ${color}` : "none",
@@ -123,7 +123,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
             width: 8,
             height: 8,
             borderRadius: "50%",
-            background: "#f44336",
+            background: "#f85149",
           }}
         />
       )}
@@ -189,7 +189,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             fontSize: 11,
-            color: isMember ? "#ff9800" : "#4a9eff",
+            color: isMember ? "#f0883e" : "#4a9eff",
             marginTop: 4,
             display: "flex",
             alignItems: "center",
@@ -202,7 +202,9 @@ function OrgNodeInner({ data, selected }: NodeProps) {
           title={collapsed ? "Expand group" : "Collapse group"}
         >
           <span>{collapsed ? "\u25B8" : "\u25BE"}</span>
-          {childCount} {childCount === 1 ? "agent" : "agents"}
+          {childCount} {isMember
+            ? (childCount === 1 ? "sub-agent" : "sub-agents")
+            : (childCount === 1 ? "agent" : "agents")}
           {collapsed && (
             <span style={{ color: "#a0a0a0", fontSize: 10 }}>(collapsed)</span>
           )}
@@ -258,8 +260,8 @@ function OrgNodeInner({ data, selected }: NodeProps) {
               style={{
                 fontSize: 9,
                 fontWeight: 600,
-                color: "#4caf50",
-                background: "rgba(76, 175, 80, 0.12)",
+                color: "#3fb950",
+                background: "rgba(63, 185, 80, 0.12)",
                 padding: "1px 5px",
                 borderRadius: 8,
                 whiteSpace: "nowrap",
@@ -301,7 +303,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
                 zIndex: 10,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(244, 67, 54, 0.8)";
+                e.currentTarget.style.background = "rgba(248, 81, 73, 0.8)";
                 e.currentTarget.style.color = "#fff";
               }}
               onMouseLeave={(e) => {
@@ -353,7 +355,7 @@ const handleBaseStyle: React.CSSProperties = {
   width: 8,
   height: 8,
   background: "#4a9eff",
-  border: "2px solid #1e1e3a",
+  border: "2px solid var(--bg-surface, #1c2333)",
   transition: "width 0.15s ease, height 0.15s ease",
 };
 

@@ -8,7 +8,7 @@ import { Toolbar } from "./components/common/Toolbar";
 import { ValidationBanner } from "./components/common/ValidationBanner";
 import { CreateNodeDialog } from "./components/dialogs/CreateNodeDialog";
 import { DeleteConfirmDialog } from "./components/dialogs/DeleteConfirmDialog";
-import { ChatPanel } from "./components/chat/ChatPanel";
+// ChatPanel removed — CLI-based chat doesn't work in Tauri's webview
 import { SettingsPanel } from "./components/settings/SettingsPanel";
 import { SchedulePanel } from "./components/schedule/SchedulePanel";
 import { ToastContainer, toast } from "./components/common/Toast";
@@ -18,8 +18,6 @@ import { startWatching } from "./services/file-watcher";
 
 function App() {
   const inspectorOpen = useUiStore((s) => s.inspectorOpen);
-  const chatPanelOpen = useUiStore((s) => s.chatPanelOpen);
-  const toggleChatPanel = useUiStore((s) => s.toggleChatPanel);
   const createDialogOpen = useUiStore((s) => s.createDialogOpen);
   const closeCreateDialog = useUiStore((s) => s.closeCreateDialog);
   const deleteDialogNodeId = useUiStore((s) => s.deleteDialogNodeId);
@@ -83,16 +81,47 @@ function App() {
   // Global keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.ctrlKey && e.key === "n") {
+      // Don't trigger shortcuts when typing in inputs
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+      if (e.ctrlKey && e.key === "n" && !isInput) {
         e.preventDefault();
         useUiStore.getState().openCreateDialog();
       }
       if (e.ctrlKey && e.key === "f") {
         e.preventDefault();
         const searchInput = document.querySelector<HTMLInputElement>(
-          'input[placeholder="Search nodes..."]'
+          'input[placeholder*="Search nodes"]'
         );
         searchInput?.focus();
+      }
+      // Ctrl+I — toggle inspector
+      if (e.ctrlKey && e.key === "i" && !isInput) {
+        e.preventDefault();
+        useUiStore.getState().toggleInspector();
+      }
+      // Ctrl+Shift+D — deploy selected team
+      if (e.ctrlKey && e.shiftKey && e.key === "D" && !isInput) {
+        e.preventDefault();
+        const nodeId = useUiStore.getState().selectedNodeId;
+        if (nodeId) {
+          const node = useTreeStore.getState().nodes.get(nodeId);
+          if (node?.kind === "group") {
+            // Click the deploy button if it exists
+            const deployBtn = document.querySelector<HTMLButtonElement>(
+              'button:not([disabled])'
+            );
+            // Find the deploy button by its text content
+            const buttons = document.querySelectorAll("button");
+            for (const btn of buttons) {
+              if (btn.textContent === "Deploy Team") {
+                btn.click();
+                break;
+              }
+            }
+          }
+        }
       }
     }
     document.addEventListener("keydown", handleKeyDown);
@@ -167,7 +196,6 @@ function App() {
         onClose={closeDeleteDialog}
         onConfirm={handleDelete}
       />
-      <ChatPanel open={chatPanelOpen} onClose={toggleChatPanel} />
       <SettingsPanel />
       <SchedulePanelWrapper />
       <ToastContainer />

@@ -79,7 +79,11 @@ export const useUiStore = create<UiStore>()((set, get) => ({
   },
 
   toggleContextHub() {
-    set((state) => ({ contextHubOpen: !state.contextHubOpen }));
+    set((state) => ({
+      contextHubOpen: !state.contextHubOpen,
+      // Close other overlays when opening context hub
+      ...(!state.contextHubOpen ? { chatPanelOpen: false, settingsOpen: false, scheduleOpen: false } : {}),
+    }));
   },
 
   setContextHubTab(tab: string) {
@@ -123,15 +127,27 @@ export const useUiStore = create<UiStore>()((set, get) => ({
   },
 
   toggleChatPanel() {
-    set((state) => ({ chatPanelOpen: !state.chatPanelOpen }));
+    set((state) => ({
+      chatPanelOpen: !state.chatPanelOpen,
+      // Close other overlays when opening chat
+      ...(!state.chatPanelOpen ? { settingsOpen: false, scheduleOpen: false, contextHubOpen: false } : {}),
+    }));
   },
 
   toggleSettings() {
-    set((state) => ({ settingsOpen: !state.settingsOpen }));
+    set((state) => ({
+      settingsOpen: !state.settingsOpen,
+      // Close other overlays when opening settings
+      ...(!state.settingsOpen ? { chatPanelOpen: false, scheduleOpen: false, contextHubOpen: false } : {}),
+    }));
   },
 
   toggleSchedule() {
-    set((state) => ({ scheduleOpen: !state.scheduleOpen }));
+    set((state) => ({
+      scheduleOpen: !state.scheduleOpen,
+      // Close other overlays when opening schedule
+      ...(!state.scheduleOpen ? { chatPanelOpen: false, settingsOpen: false, contextHubOpen: false } : {}),
+    }));
   },
 
   addToast(message: string, type: 'success' | 'error' | 'info' = 'info') {

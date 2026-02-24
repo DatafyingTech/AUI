@@ -105,8 +105,8 @@ async function scanAgents(projectPath: string): Promise<CatalogItem[]> {
 // ── Bento Card ──────────────────────────────────────────
 
 const KIND_COLORS: Record<string, string> = {
-  agent: "#ff9800",
-  skill: "#4caf50",
+  agent: "#f0883e",
+  skill: "#3fb950",
   group: "#4a9eff",
 };
 
@@ -127,7 +127,7 @@ function BentoCard({
   return (
     <div
       style={{
-        background: "#1e1e3a",
+        background: "var(--bg-surface, #1c2333)",
         border: `1px solid ${expanded ? color : "var(--border-color)"}`,
         borderRadius: 10,
         overflow: "hidden",
@@ -186,13 +186,13 @@ function BentoCard({
               />
             )}
             {isOnTree && (
-              <Badge text="On Tree" bg="rgba(76,175,80,0.15)" color="#4caf50" border="rgba(76,175,80,0.3)" />
+              <Badge text="On Tree" bg="rgba(76,175,80,0.15)" color="#3fb950" border="rgba(76,175,80,0.3)" />
             )}
             {item.kind === "group" && item.agentCount !== undefined && item.agentCount > 0 && (
               <Badge
                 text={`${item.agentCount} agent${item.agentCount > 1 ? "s" : ""}`}
                 bg="rgba(255,152,0,0.15)"
-                color="#ff9800"
+                color="#f0883e"
                 border="rgba(255,152,0,0.3)"
               />
             )}
@@ -200,7 +200,7 @@ function BentoCard({
               <Badge
                 text={`${item.assignedSkillCount} skill${item.assignedSkillCount > 1 ? "s" : ""}`}
                 bg="rgba(76,175,80,0.15)"
-                color="#4caf50"
+                color="#3fb950"
                 border="rgba(76,175,80,0.3)"
               />
             )}
@@ -253,7 +253,7 @@ function BentoCard({
           {/* Actions */}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {!isOnTree && item.kind !== "group" ? (
-              <ActionButton label="Add to Tree" color="#4caf50" onClick={(e) => { e.stopPropagation(); onAddToTree(); }} />
+              <ActionButton label="Add to Tree" color="#3fb950" onClick={(e) => { e.stopPropagation(); onAddToTree(); }} />
             ) : (
               <ActionButton label="View on Tree" color="var(--accent-blue)" onClick={(e) => { e.stopPropagation(); onEdit(); }} />
             )}
@@ -460,9 +460,10 @@ function ImportDropdown({
     setImporting(true);
     try {
       const rawUrl = toRawGitHubUrl(urlValue.trim());
-      const resp = await fetch(rawUrl);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-      const content = await resp.text();
+      // Use Rust-side fetch to bypass webview CORS/CSP restrictions
+      const { invoke } = await import("@tauri-apps/api/core");
+      const content = await invoke<string>("fetch_url", { url: rawUrl });
+      if (!content || content.trim().length === 0) throw new Error("Empty response from URL");
       const name = await importSkillContent(content, projectPath, addNode, setSkillItems, rawUrl);
       toast(`Imported skill "${name}" from URL`, "success");
       onClose();
@@ -497,7 +498,7 @@ function ImportDropdown({
         right: 0,
         marginTop: 4,
         width: 260,
-        background: "#1e1e3a",
+        background: "var(--bg-surface, #1c2333)",
         border: "1px solid var(--border-color)",
         borderRadius: 8,
         boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
@@ -617,8 +618,6 @@ export function ContextHub() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterChip>("All");
   const [importOpen, setImportOpen] = useState(false);
-  const toggleChatPanel = useUiStore((s) => s.toggleChatPanel);
-  const toggleSettings = useUiStore((s) => s.toggleSettings);
   const loadProject = useTreeStore((s) => s.loadProject);
   const saveCompanyPlan = useTreeStore((s) => s.saveCompanyPlan);
 
@@ -758,7 +757,7 @@ export function ContextHub() {
       <div
         style={{
           flexShrink: 0,
-          background: "linear-gradient(180deg, rgba(30,30,58,0.95) 0%, rgba(30,30,58,0.8) 100%)",
+          background: "linear-gradient(180deg, rgba(21,27,35,0.95) 0%, rgba(21,27,35,0.85) 100%)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
@@ -769,19 +768,6 @@ export function ContextHub() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}>Catalog</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              onClick={() => { toggleChatPanel(); toggleContextHub(); }}
-              style={{
-                padding: "5px 14px", fontSize: 12, fontWeight: 600,
-                background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)",
-                borderRadius: 8, cursor: "pointer",
-                transition: "border-color 0.15s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-color)"; }}
-            >
-              Chat
-            </button>
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setImportOpen((v) => !v)}
@@ -842,8 +828,6 @@ export function ContextHub() {
               toast(err instanceof Error ? err.message : "Failed", "error");
             }
           }} />
-          <UtilityButton label="Settings" onClick={() => { toggleSettings(); toggleContextHub(); }} />
-          <UtilityButton label="Schedules" onClick={() => { useUiStore.getState().toggleSchedule(); toggleContextHub(); }} />
         </div>
 
         {/* Search input */}

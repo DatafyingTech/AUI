@@ -1,5 +1,61 @@
 # AUI (Agent UI) — Changelog
 
+## v0.3.1 — February 24, 2026
+
+### Bug Fixes
+- **Deploy now opens a visible terminal** — replaced Tauri shell plugin approach (which hardcodes `CREATE_NO_WINDOW`) with a Rust-side `open_terminal` command using `CREATE_NEW_CONSOLE`. Deploy now reliably opens a visible PowerShell window on Windows, Terminal on macOS, or any available emulator on Linux.
+- **Import from GitHub URL works** — fixed "Failed to fetch" error by routing URL imports through a Rust-side `fetch_url` command, bypassing webview CORS/CSP restrictions.
+- **Skill names display correctly on nodes** — fixed issue where skill tags on canvas nodes showed hash IDs instead of human-readable names. Skills are now auto-added to the tree store when assigned (#7).
+
+### Enhancements
+- **Sub-agent labels** — agent nodes nested inside teams now show "sub-agents" instead of "agents" in their child count label (#8)
+- **Restructured root node inspector** — "Owner" section renamed to "Company / Project Name" with better placeholder text. Global Skills and Teams are now collapsible sections with disclosure triangles. Generate with AI moved inside the Teams section (#9)
+- **Removed Chat panel** — the non-functional Chat feature has been removed from the toolbar and app since CLI-based chat cannot run inside Tauri's webview (#10)
+- **Removed AI gradients** — all purple-to-blue and orange gradient buttons replaced with flat solid colors (`var(--accent-purple)`, `var(--accent-orange)`) per the frontend-design skill's guidance against generic AI aesthetics
+- **39 skills installed** — downloaded and installed the full Anthropic skills pack plus community skills (algorithmic-art, canvas-design, frontend-design, mcp-builder, skill-creator, ios-simulator, playwright, d3js, web-asset-generator, and more)
+
+### Technical
+- Added `open_terminal` Rust command with platform-specific terminal launching (CREATE_NEW_CONSOLE on Windows)
+- Added `fetch_url` Rust command for server-side HTTP fetching (bypasses webview restrictions)
+- Overlay panels (Settings, Schedules, Catalog) are now mutually exclusive — opening one closes the others
+- Toolbar reorganized: Settings, Schedules, Catalog now directly accessible (Chat removed)
+
+---
+
+## v0.3.0 — February 24, 2026
+
+### UI Overhaul
+- **Refined color palette** — blue-tinted dark backgrounds (#0d1117, #151b23, #1c2333) replace the old purplish tones for a more professional, modern look
+- **Desaturated accents** — orange (#f0883e), green (#3fb950), purple (#8b5cf6), gold (#d29922), red (#f85149) are all slightly desaturated for less visual noise
+- **Unified AI gradient** — all AI-powered buttons now use a consistent purple-to-blue gradient (`#8b5cf6 → #4a9eff`) instead of the old purple-only gradient
+- **Consistent input styling** — all input fields now use CSS variables with `border-radius: 6px` and smooth `transition: border-color 0.15s`
+- **Toolbar subtitle** — "Agent UI" subtitle appears next to the AUI logo for clarity
+- **Better welcome screen** — improved empty state with keyboard shortcut hints and a subtitle
+
+### UX Improvements
+- **Deploy moved to top** — the Deploy section now appears at the top of the team inspector panel for faster access (was buried at the bottom)
+- **Renamed "Auto-Fill"** to **"Generate with AI"** across all editors for clearer intent
+- **Export button** redesigned as an outlined secondary button (was a filled gradient) to reduce visual competition with Deploy
+- **Refined button hierarchy** — primary actions (Deploy, Save) are filled, secondary actions (Export, Discard) are outlined, tertiary actions (Generate Skill Files) are dashed
+- **Chat, Settings, Schedules promoted to toolbar** — direct 1-click access from the toolbar instead of buried in the Menu (now renamed "Catalog")
+- **"Menu" renamed to "Catalog"** — the ContextHub overlay now opens via a "Catalog" button, better reflecting its purpose as a skill/agent/team browser
+- **Mutual-exclusive overlays** — opening Chat, Settings, Schedules, or Catalog automatically closes any other open overlay to prevent stacking
+- **Cleaner Catalog header** — removed redundant Chat/Settings/Schedules buttons from the Catalog utility row; only Refresh and Save Plan remain
+- **Inspector panel widened** to 480px (was 420px) for more comfortable editing
+
+### Keyboard Shortcuts
+- `Ctrl+Shift+D` — deploy the currently selected team
+- `Ctrl+Enter` — deploy from the deploy prompt textarea
+- `Ctrl+I` — toggle the inspector panel
+- Shortcuts are suppressed when typing in input fields
+
+### Technical
+- Added new CSS variables: `--bg-elevated`, `--text-tertiary`, `--border-hover`, `--accent-danger`, and radius tokens (`--radius-sm/md/lg/xl`)
+- Updated team colors in grouping utility to match the new desaturated palette
+- All hardcoded color values replaced with CSS variables where applicable
+
+---
+
 ## v0.2.2 — February 23, 2026
 
 ### Bug Fixes

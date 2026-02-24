@@ -46,11 +46,11 @@ export function SearchBar() {
         gap: 6,
         padding: "6px 12px",
         borderRadius: 10,
-        background: "rgba(22, 33, 62, 0.75)",
+        background: "rgba(21, 27, 35, 0.85)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        border: "1px solid rgba(74, 158, 255, 0.15)",
-        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+        border: "1px solid var(--border-color)",
+        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
         pointerEvents: "auto",
       }}
     >
@@ -65,7 +65,7 @@ export function SearchBar() {
           style={{
             width: 180,
             padding: "5px 26px 5px 8px",
-            background: "rgba(26, 26, 46, 0.6)",
+            background: "rgba(13, 17, 23, 0.6)",
             border: "1px solid var(--border-color)",
             borderRadius: 6,
             color: "var(--text-primary)",

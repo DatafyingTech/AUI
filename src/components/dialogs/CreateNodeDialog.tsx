@@ -135,12 +135,12 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
 
   const kindOptions: Array<{ value: CreateKind; label: string; color: string }> = isInsideTeam
     ? [
-        { value: "group", label: "Agent", color: "#ff9800" },
+        { value: "group", label: "Agent", color: "#f0883e" },
         { value: "skill", label: "Skill", color: "var(--accent-green)" },
       ]
     : [
         { value: "group", label: "Team", color: "var(--accent-blue)" },
-        { value: "agent", label: "Agent", color: "#ff9800" },
+        { value: "agent", label: "Agent", color: "#f0883e" },
         { value: "skill", label: "Skill", color: "var(--accent-green)" },
       ];
 
@@ -201,10 +201,10 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
           width: 440,
           maxHeight: "85vh",
           overflowY: "auto",
-          background: "#1e1e3a",
+          background: "var(--bg-surface, #1c2333)",
           borderRadius: 12,
           border: "1px solid var(--border-color)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
           padding: 24,
         }}
       >
@@ -380,7 +380,7 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
                 width: "100%",
                 padding: "8px 12px",
                 background: "var(--bg-primary)",
-                border: `1px solid ${showError ? "#f44336" : "var(--border-color)"}`,
+                border: `1px solid ${showError ? "#f85149" : "var(--border-color)"}`,
                 borderRadius: 6,
                 color: "var(--text-primary)",
                 fontSize: 14,
@@ -389,7 +389,7 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
               }}
             />
             {showError && (
-              <span style={{ color: "#f44336", fontSize: 11, marginTop: 4, display: "block" }}>
+              <span style={{ color: "#f85149", fontSize: 11, marginTop: 4, display: "block" }}>
                 {kind === "group"
                   ? "Name must be 2-50 characters"
                   : "Name must be lowercase with dashes only (e.g. my-skill)"}
