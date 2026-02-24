@@ -1,6 +1,6 @@
 [package]
 name = "aui"
-version = "0.3.5"
+version = "0.3.6"
 description = "AUI — Agent UI for Claude Code configs"
 authors = ["Kevin"]
 license = "MIT"

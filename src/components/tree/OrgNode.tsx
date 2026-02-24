@@ -48,7 +48,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
   const isSubAgent = isGroup && (parentNode?.kind === "agent" || parentIsMemberAgent);
 
   // Team = blue, sub-agent = lighter blue, agent-in-team = orange
-  const color = isSubAgent ? "#58a6ff" : isMember ? "#f0883e" : KIND_COLORS[node.kind];
+  const color = isSubAgent ? "#a5d6ff" : isMember ? "#f0883e" : KIND_COLORS[node.kind];
 
   // Resolve assigned skill names (tree node → name cache → raw ID)
   const skillNameCache = useTreeStore((s) => s.skillNameCache);
@@ -98,7 +98,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
 
   const background = isGroup
     ? isSubAgent
-      ? "rgba(88, 166, 255, 0.06)"
+      ? "rgba(165, 214, 255, 0.06)"
       : isMember
         ? "rgba(240, 136, 62, 0.06)"
         : "rgba(74, 158, 255, 0.06)"
@@ -162,7 +162,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
           borderRadius: 10,
         }}
       >
-        {isSubAgent ? "SUB-AGENT" : isMember ? "AGENT" : isGroup ? "TEAM" : node.kind}
+        {isRoot ? "YOU" : isSubAgent ? "SUB-AGENT" : isMember ? "AGENT" : isGroup ? "TEAM" : node.kind}
       </div>
 
       {/* Name */}
@@ -207,7 +207,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             fontSize: 11,
-            color: isSubAgent ? "#58a6ff" : isMember ? "#f0883e" : "#4a9eff",
+            color: isSubAgent ? "#a5d6ff" : isMember ? "#f0883e" : "#4a9eff",
             marginTop: 4,
             display: "flex",
             alignItems: "center",

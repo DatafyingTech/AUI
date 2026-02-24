@@ -1,20 +1,18 @@
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
-import { readTextFile, writeTextFile, exists, mkdir } from "@tauri-apps/plugin-fs";
+import { readTextFile, exists } from "@tauri-apps/plugin-fs";
 import { useTreeStore } from "@/store/tree-store";
-import { useUiStore } from "@/store/ui-store";
 import { join } from "@/utils/paths";
 import { toast } from "@/components/common/Toast";
+import {
+  loadSchedules as loadSchedulesFromDisk,
+  createSchedule,
+  deleteSchedule,
+  toggleSchedule,
+  type ScheduleRecord,
+} from "@/services/scheduler";
 import type { AuiNode } from "@/types/aui-node";
 
-interface ScheduledJob {
-  id: string;
-  teamId: string;
-  teamName: string;
-  cron: string;
-  prompt: string;
-  enabled: boolean;
-  createdAt: number;
-}
+/* ── Shared styles ───────────────────────────────────── */
 
 const panelStyle: CSSProperties = {
   position: "fixed",
@@ -50,28 +48,91 @@ const labelStyle: CSSProperties = {
   letterSpacing: "0.5px",
 };
 
-const CRON_PRESETS = [
-  { label: "Every hour", value: "0 * * * *" },
-  { label: "Every 6 hours", value: "0 */6 * * *" },
-  { label: "Daily at 9am", value: "0 9 * * *" },
-  { label: "Weekdays at 9am", value: "0 9 * * 1-5" },
-  { label: "Weekly (Monday 9am)", value: "0 9 * * 1" },
-  { label: "Monthly (1st at 9am)", value: "0 9 1 * *" },
+const REPEAT_OPTIONS = [
+  { label: "Once", value: "once" },
+  { label: "Every hour", value: "hourly" },
+  { label: "Every day", value: "daily" },
+  { label: "Every week", value: "weekly" },
+  { label: "Custom cron expression", value: "custom" },
 ];
 
 interface SchedulePanelProps {
   onClose: () => void;
 }
 
+/** Build a cron expression from repeat type + time. */
+function buildCron(repeat: string, hour: string, minute: string): string {
+  const h = hour || "9";
+  const m = minute || "0";
+  switch (repeat) {
+    case "hourly":
+      return "0 * * * *";
+    case "daily":
+      return `${m} ${h} * * *`;
+    case "weekly":
+      return `${m} ${h} * * 1`;
+    case "once":
+    default:
+      return `${m} ${h} * * *`;
+  }
+}
+
+/** Describe a repeat value as human-readable. */
+function describeRepeat(repeat: string, cron: string): string {
+  switch (repeat) {
+    case "once":
+      return "One-time";
+    case "hourly":
+      return "Every hour";
+    case "daily":
+      return "Daily";
+    case "weekly":
+      return "Weekly";
+    case "monthly":
+      return "Monthly";
+    case "custom":
+      return cron;
+    default:
+      return repeat;
+  }
+}
+
+/** Extract HH:MM from a cron expression (best-effort). */
+function cronToTime(cron: string): string {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length < 2) return "";
+  const m = parts[0] === "*" ? "0" : parts[0].replace(/\*\//, "");
+  const h = parts[1] === "*" ? "" : parts[1].replace(/\*\//, "");
+  if (!h) return "";
+  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+}
+
+/** Format a timestamp as a short date string. */
+function formatDate(ts: number): string {
+  return new Date(ts).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function SchedulePanel({ onClose }: SchedulePanelProps) {
   const projectPath = useTreeStore((s) => s.projectPath);
   const nodes = useTreeStore((s) => s.nodes);
+  const skillNameCache = useTreeStore((s) => s.skillNameCache);
+  const generateTeamSkillFiles = useTreeStore((s) => s.generateTeamSkillFiles);
 
-  const [jobs, setJobs] = useState<ScheduledJob[]>([]);
+  const [jobs, setJobs] = useState<ScheduleRecord[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState("");
-  const [cronExpr, setCronExpr] = useState("0 9 * * *");
+  const [repeatType, setRepeatType] = useState("once");
+  const [schedHour, setSchedHour] = useState("09");
+  const [schedMinute, setSchedMinute] = useState("00");
+  const [customCron, setCustomCron] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [creating, setCreating] = useState(false);
 
   // Get top-level teams
   const teams: AuiNode[] = [];
@@ -79,80 +140,242 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
     if (n.kind === "group" && n.parentId === "root") teams.push(n);
   }
 
-  // Load schedules
+  // Load schedules on mount
   useEffect(() => {
     if (!projectPath) return;
-    loadSchedules();
+    loadJobs();
   }, [projectPath]);
 
-  const loadSchedules = useCallback(async () => {
+  const loadJobs = useCallback(async () => {
     if (!projectPath) return;
     try {
-      const schedulePath = join(projectPath, ".aui", "schedules.json");
-      if (await exists(schedulePath)) {
-        const raw = await readTextFile(schedulePath);
-        setJobs(JSON.parse(raw));
+      const records = await loadSchedulesFromDisk(projectPath);
+      setJobs(records);
+    } catch {
+      // ignore
+    }
+  }, [projectPath]);
+
+  // Read a skill file from disk given a slug
+  const readSkillFile = useCallback(
+    async (slug: string): Promise<string> => {
+      if (!projectPath) return "";
+      try {
+        const path = join(projectPath, ".claude", "skills", slug, "SKILL.md");
+        if (await exists(path)) return await readTextFile(path);
+      } catch {
+        /* ignore */
       }
-    } catch {
-      // Start with empty
-    }
-  }, [projectPath]);
+      return "";
+    },
+    [projectPath],
+  );
 
-  const saveSchedules = useCallback(async (updatedJobs: ScheduledJob[]) => {
-    if (!projectPath) return;
-    try {
-      const auiDir = join(projectPath, ".aui");
-      if (!(await exists(auiDir))) await mkdir(auiDir, { recursive: true });
-      const schedulePath = join(auiDir, "schedules.json");
-      await writeTextFile(schedulePath, JSON.stringify(updatedJobs, null, 2));
-      setJobs(updatedJobs);
-    } catch {
-      toast("Failed to save schedules", "error");
-    }
-  }, [projectPath]);
+  // Build primer (mirrors GroupEditor.buildFullPrimer)
+  const buildPrimer = useCallback(
+    async (teamNode: AuiNode, objective: string) => {
+      const teamSlug = teamNode.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
 
-  const handleCreate = useCallback(() => {
-    if (!selectedTeamId || !cronExpr.trim()) return;
+      const resolveSkillName = (sid: string): string | null => {
+        const n = nodes.get(sid);
+        if (n?.name) return n.name;
+        const cached = skillNameCache.get(sid);
+        if (cached) return cached;
+        return null;
+      };
+
+      const rootNode = nodes.get("root");
+      const rootName = rootNode?.name ?? "Unknown";
+      const rootDesc = rootNode?.promptBody ?? "";
+      const globalSkillNames = (rootNode?.assignedSkills ?? [])
+        .map((sid) => resolveSkillName(sid))
+        .filter((n): n is string => n !== null);
+
+      const siblingTeams: string[] = [];
+      for (const n of nodes.values()) {
+        if (n.kind === "group" && n.parentId === "root" && n.id !== teamNode.id) {
+          siblingTeams.push(n.name);
+        }
+      }
+
+      const children: AuiNode[] = [];
+      for (const n of nodes.values()) {
+        if (n.parentId === teamNode.id) children.push(n);
+      }
+
+      const managerSkillContent = await readSkillFile(`${teamSlug}-manager`);
+
+      const agentBlocks: string[] = [];
+      for (const agent of children) {
+        const agentSlug = agent.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+        const skillContent = await readSkillFile(`${teamSlug}-${agentSlug}`);
+
+        let block = `\n### Agent: ${agent.name} (slug: "${agentSlug}")\n`;
+        if (agent.promptBody) block += `Role: ${agent.promptBody}\n`;
+        if (agent.variables.length > 0) {
+          block += `Variables: ${agent.variables.map((v) => `${v.name}=${v.value || "..."}`).join(", ")}\n`;
+        }
+        if (skillContent) {
+          block += `\n<skill-file name="${teamSlug}-${agentSlug}">\n${skillContent}\n</skill-file>\n`;
+        }
+        agentBlocks.push(block);
+      }
+
+      const teamSkillBlocks: string[] = [];
+      for (const sid of teamNode.assignedSkills) {
+        const sName = resolveSkillName(sid);
+        if (sName) teamSkillBlocks.push(`- /${sName}`);
+      }
+
+      return `You are being deployed as the senior team manager for "${teamNode.name}".
+
+## Company / Organization Context
+- **Owner:** ${rootName}
+${rootDesc ? `- **Description:** ${rootDesc}` : ""}
+${globalSkillNames.length > 0 ? `- **Global Skills:** ${globalSkillNames.join(", ")}` : ""}
+${siblingTeams.length > 0 ? `- **Other Teams:** ${siblingTeams.join(", ")}` : ""}
+
+## Team: ${teamNode.name}
+${teamNode.promptBody || "(no description)"}
+${teamNode.variables.length > 0 ? `\n### Team Variables\n${teamNode.variables.map((v) => `- ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
+${teamSkillBlocks.length > 0 ? `\n### Team Skills\n${teamSkillBlocks.join("\n")}` : ""}
+
+## Your Manager Skill File
+${managerSkillContent ? `<skill-file name="${teamSlug}-manager">\n${managerSkillContent}\n</skill-file>` : "(no manager skill file found)"}
+
+## Team Roster (${children.length} agents)
+${agentBlocks.join("\n")}
+
+## OBJECTIVE
+${objective}
+
+## DEPLOYMENT INSTRUCTIONS
+You MUST follow these steps exactly:
+
+1. **Create the team** — Use \`TeamCreate\` with team name \`${teamSlug}\`
+2. **Spawn each agent** — For each agent listed above, use the \`Task\` tool with:
+   - \`team_name: "${teamSlug}"\`
+   - \`subagent_type: "general-purpose"\`
+   - \`name: "<agent-slug>"\` (slugs listed above per agent)
+   - Include their FULL skill file content in the prompt so they have all context needed
+3. **Create and assign tasks** — Use \`TaskCreate\` to break the objective into tasks, then \`TaskUpdate\` with \`owner\` to assign
+4. **Coordinate** — Monitor progress via \`TaskList\`, resolve conflicts, answer agent questions
+5. **Complete** — When all tasks are done, compile a summary report and shut down the team
+${teamSkillBlocks.length > 0 || globalSkillNames.length > 0 ? `\n## SKILLS\nSkills listed above can be invoked using the \`Skill\` tool.` : ""}
+IMPORTANT: Each agent already has their full skill file content above. Pass it directly in their spawn prompt.
+`;
+    },
+    [nodes, skillNameCache, readSkillFile, projectPath],
+  );
+
+  const handleCreate = useCallback(async () => {
+    if (!selectedTeamId || !projectPath || creating) return;
     const team = nodes.get(selectedTeamId);
     if (!team) return;
 
-    const newJob: ScheduledJob = {
-      id: `sched-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      teamId: selectedTeamId,
-      teamName: team.name,
-      cron: cronExpr.trim(),
-      prompt: prompt.trim(),
-      enabled: true,
-      createdAt: Date.now(),
-    };
+    setCreating(true);
+    try {
+      // Generate skill files first (non-fatal if it fails)
+      try {
+        await generateTeamSkillFiles(selectedTeamId);
+      } catch {
+        // continue
+      }
 
-    const updated = [...jobs, newJob];
-    saveSchedules(updated);
-    setShowCreate(false);
-    setSelectedTeamId("");
-    setCronExpr("0 9 * * *");
-    setPrompt("");
-    toast("Schedule created", "success");
-  }, [selectedTeamId, cronExpr, prompt, jobs, nodes, saveSchedules]);
+      // Build cron and repeat
+      let cron: string;
+      const repeat = repeatType;
+      if (repeatType === "custom") {
+        cron = customCron.trim() || "0 9 * * *";
+      } else {
+        cron = buildCron(repeatType, schedHour, schedMinute);
+      }
 
-  const handleToggle = useCallback((jobId: string) => {
-    const updated = jobs.map((j) =>
-      j.id === jobId ? { ...j, enabled: !j.enabled } : j,
-    );
-    saveSchedules(updated);
-  }, [jobs, saveSchedules]);
+      // Build primer
+      const objective = prompt.trim() || "Complete the tasks assigned to this team.";
+      const primerContent = await buildPrimer(team, objective);
 
-  const handleDelete = useCallback((jobId: string) => {
-    const updated = jobs.filter((j) => j.id !== jobId);
-    saveSchedules(updated);
-    toast("Schedule removed", "success");
-  }, [jobs, saveSchedules]);
+      // Create OS-level scheduled task
+      await createSchedule(
+        projectPath,
+        selectedTeamId,
+        team.name,
+        cron,
+        repeat,
+        primerContent,
+        prompt.trim(),
+      );
 
-  const describeCron = (cron: string): string => {
-    const preset = CRON_PRESETS.find((p) => p.value === cron);
-    if (preset) return preset.label;
-    return cron;
-  };
+      await loadJobs();
+
+      // Reset form
+      setShowCreate(false);
+      setSelectedTeamId("");
+      setRepeatType("once");
+      setSchedHour("09");
+      setSchedMinute("00");
+      setCustomCron("");
+      setPrompt("");
+      toast("Schedule created (OS task registered)", "success");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast(`Failed to create schedule: ${msg}`, "error");
+    }
+    setCreating(false);
+  }, [
+    selectedTeamId,
+    repeatType,
+    schedHour,
+    schedMinute,
+    customCron,
+    prompt,
+    projectPath,
+    nodes,
+    creating,
+    buildPrimer,
+    generateTeamSkillFiles,
+    loadJobs,
+  ]);
+
+  const handleToggle = useCallback(
+    async (jobId: string) => {
+      if (!projectPath) return;
+      try {
+        const updated = await toggleSchedule(projectPath, jobId);
+        setJobs(updated);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast(`Failed to toggle schedule: ${msg}`, "error");
+      }
+    },
+    [projectPath],
+  );
+
+  const handleDelete = useCallback(
+    async (jobId: string) => {
+      if (!projectPath) return;
+      try {
+        await deleteSchedule(projectPath, jobId);
+        await loadJobs();
+        toast("Schedule removed (OS task deleted)", "success");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast(`Failed to delete schedule: ${msg}`, "error");
+      }
+    },
+    [projectPath, loadJobs],
+  );
+
+  const canCreate =
+    !!selectedTeamId &&
+    (repeatType !== "custom" || !!customCron.trim()) &&
+    !creating;
 
   return (
     <div style={panelStyle}>
@@ -166,7 +389,9 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
           justifyContent: "space-between",
         }}
       >
-        <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}>
+        <div
+          style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}
+        >
           Scheduled Deployments
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -174,7 +399,7 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
             onClick={() => setShowCreate(!showCreate)}
             style={{
               padding: "4px 12px",
-              background: "var(--accent-blue)",
+              background: "var(--accent-purple)",
               color: "white",
               border: "none",
               borderRadius: 4,
@@ -209,15 +434,25 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
             style={{
               padding: 14,
               background: "#1a1a2e",
-              border: "1px solid var(--accent-blue)",
+              border: "1px solid var(--accent-purple)",
               borderRadius: 8,
               marginBottom: 16,
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent-blue)", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--accent-purple)",
+                marginBottom: 12,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
               New Schedule
             </div>
 
+            {/* Team selector */}
             <div style={{ marginBottom: 10 }}>
               <label style={labelStyle}>Team</label>
               <select
@@ -227,37 +462,101 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
               >
                 <option value="">Select a team...</option>
                 {teams.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
                 ))}
               </select>
             </div>
 
+            {/* Repeat frequency */}
             <div style={{ marginBottom: 10 }}>
-              <label style={labelStyle}>Schedule</label>
-              <div style={{ display: "flex", gap: 6 }}>
-                <select
-                  style={{ ...inputStyle, flex: 1 }}
-                  value={CRON_PRESETS.find((p) => p.value === cronExpr) ? cronExpr : "custom"}
-                  onChange={(e) => {
-                    if (e.target.value !== "custom") setCronExpr(e.target.value);
-                  }}
-                >
-                  {CRON_PRESETS.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                  <option value="custom">Custom...</option>
-                </select>
-              </div>
-              <input
-                style={{ ...inputStyle, marginTop: 6, fontFamily: "monospace", fontSize: 12 }}
-                value={cronExpr}
-                onChange={(e) => setCronExpr(e.target.value)}
-                placeholder="* * * * * (min hour day month weekday)"
-              />
+              <label style={labelStyle}>Repeat</label>
+              <select
+                style={inputStyle}
+                value={repeatType}
+                onChange={(e) => setRepeatType(e.target.value)}
+              >
+                {REPEAT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
+            {/* Time picker — shown for once / daily / weekly */}
+            {repeatType !== "hourly" && repeatType !== "custom" && (
+              <div style={{ marginBottom: 10 }}>
+                <label style={labelStyle}>Run at</label>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <select
+                    style={{ ...inputStyle, width: 72 }}
+                    value={schedHour}
+                    onChange={(e) => setSchedHour(e.target.value)}
+                  >
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const v = String(i).padStart(2, "0");
+                      return (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <span
+                    style={{
+                      color: "var(--text-secondary)",
+                      fontWeight: 700,
+                      fontSize: 14,
+                    }}
+                  >
+                    :
+                  </span>
+                  <select
+                    style={{ ...inputStyle, width: 72 }}
+                    value={schedMinute}
+                    onChange={(e) => setSchedMinute(e.target.value)}
+                  >
+                    {["00", "15", "30", "45"].map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Custom cron input */}
+            {repeatType === "custom" && (
+              <div style={{ marginBottom: 10 }}>
+                <label style={labelStyle}>Cron Expression</label>
+                <input
+                  style={{
+                    ...inputStyle,
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                  }}
+                  value={customCron}
+                  onChange={(e) => setCustomCron(e.target.value)}
+                  placeholder="* * * * * (min hour day month weekday)"
+                />
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "var(--text-secondary)",
+                    marginTop: 4,
+                  }}
+                >
+                  E.g. "0 9 * * 1-5" = weekdays at 9am
+                </div>
+              </div>
+            )}
+
+            {/* Deploy prompt */}
             <div style={{ marginBottom: 12 }}>
-              <label style={labelStyle}>Prompt</label>
+              <label style={labelStyle}>Deploy Prompt</label>
               <textarea
                 rows={3}
                 style={{ ...inputStyle, resize: "vertical" }}
@@ -267,24 +566,27 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
               />
             </div>
 
+            {/* Actions */}
             <div style={{ display: "flex", gap: 6 }}>
               <button
                 onClick={handleCreate}
-                disabled={!selectedTeamId || !cronExpr.trim()}
+                disabled={!canCreate}
                 style={{
                   flex: 1,
                   padding: "8px 12px",
-                  background: selectedTeamId && cronExpr.trim() ? "var(--accent-blue)" : "var(--border-color)",
+                  background: canCreate
+                    ? "var(--accent-purple)"
+                    : "var(--border-color)",
                   color: "white",
                   border: "none",
                   borderRadius: 4,
-                  cursor: selectedTeamId && cronExpr.trim() ? "pointer" : "default",
+                  cursor: canCreate ? "pointer" : "default",
                   fontSize: 12,
                   fontWeight: 600,
-                  opacity: selectedTeamId && cronExpr.trim() ? 1 : 0.5,
+                  opacity: canCreate ? 1 : 0.5,
                 }}
               >
-                Create Schedule
+                {creating ? "Creating..." : "Create Schedule"}
               </button>
               <button
                 onClick={() => setShowCreate(false)}
@@ -304,7 +606,7 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
           </div>
         )}
 
-        {/* Jobs list */}
+        {/* Empty state */}
         {jobs.length === 0 && !showCreate && (
           <div
             style={{
@@ -314,25 +616,59 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
               fontSize: 13,
             }}
           >
-            <div style={{ fontSize: 24, marginBottom: 12 }}>No scheduled deployments</div>
-            <div>Click <b>+ New</b> to schedule a team for recurring deployment.</div>
+            <div style={{ fontSize: 24, marginBottom: 12 }}>
+              No scheduled deployments
+            </div>
+            <div>
+              Click <b>+ New</b> to schedule a team for recurring deployment.
+            </div>
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 11,
+                color: "var(--text-tertiary, var(--text-secondary))",
+              }}
+            >
+              Schedules register real OS tasks (Windows Task Scheduler / cron).
+            </div>
           </div>
         )}
 
+        {/* Job list */}
         {jobs.map((job) => (
           <div
             key={job.id}
             style={{
               padding: 12,
-              background: job.enabled ? "rgba(74, 158, 255, 0.05)" : "rgba(255,255,255,0.02)",
-              border: `1px solid ${job.enabled ? "var(--border-color)" : "rgba(255,255,255,0.05)"}`,
+              background: job.enabled
+                ? "rgba(139, 92, 246, 0.05)"
+                : "rgba(255,255,255,0.02)",
+              border: `1px solid ${
+                job.enabled
+                  ? "rgba(139, 92, 246, 0.2)"
+                  : "rgba(255,255,255,0.05)"
+              }`,
               borderRadius: 8,
               marginBottom: 8,
               opacity: job.enabled ? 1 : 0.6,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>
+            {/* Row 1: Team name + controls */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 6,
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: "var(--text-primary)",
+                }}
+              >
                 {job.teamName}
               </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -342,9 +678,15 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
                     padding: "2px 8px",
                     fontSize: 10,
                     fontWeight: 600,
-                    background: job.enabled ? "rgba(63,185,80,0.15)" : "rgba(255,255,255,0.1)",
+                    background: job.enabled
+                      ? "rgba(63,185,80,0.15)"
+                      : "rgba(255,255,255,0.1)",
                     color: job.enabled ? "#3fb950" : "var(--text-secondary)",
-                    border: `1px solid ${job.enabled ? "rgba(63,185,80,0.3)" : "var(--border-color)"}`,
+                    border: `1px solid ${
+                      job.enabled
+                        ? "rgba(63,185,80,0.3)"
+                        : "var(--border-color)"
+                    }`,
                     borderRadius: 10,
                     cursor: "pointer",
                   }}
@@ -361,26 +703,50 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
                     fontSize: 14,
                     padding: "0 4px",
                   }}
-                  title="Delete schedule"
+                  title="Delete schedule and OS task"
                 >
                   x
                 </button>
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+            {/* Row 2: Badges — repeat type, time, raw cron */}
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginBottom: 4,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
               <span
                 style={{
                   fontSize: 10,
                   fontWeight: 600,
                   padding: "1px 6px",
                   borderRadius: 8,
-                  background: "rgba(74,158,255,0.15)",
-                  color: "var(--accent-blue)",
+                  background: "rgba(139, 92, 246, 0.15)",
+                  color: "var(--accent-purple)",
+                  textTransform: "uppercase",
                 }}
               >
-                {describeCron(job.cron)}
+                {describeRepeat(job.repeat, job.cron)}
               </span>
+              {cronToTime(job.cron) && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: "1px 6px",
+                    borderRadius: 8,
+                    background: "rgba(74,158,255,0.1)",
+                    color: "var(--accent-blue)",
+                  }}
+                >
+                  {cronToTime(job.cron)}
+                </span>
+              )}
               <span
                 style={{
                   fontSize: 10,
@@ -392,6 +758,18 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
               </span>
             </div>
 
+            {/* Row 3: Created date */}
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--text-secondary)",
+                marginBottom: 2,
+              }}
+            >
+              Created {formatDate(job.createdAt)}
+            </div>
+
+            {/* Row 4: Prompt (truncated) */}
             {job.prompt && (
               <div
                 style={{
@@ -412,7 +790,7 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
         ))}
       </div>
 
-      {/* Footer info */}
+      {/* Footer */}
       <div
         style={{
           padding: "12px 16px",
@@ -422,8 +800,11 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
           lineHeight: 1.4,
         }}
       >
-        Schedules are saved to <code style={{ color: "var(--accent-blue)" }}>.aui/schedules.json</code>.
-        Use an external cron runner or the Claude CLI to execute scheduled deployments.
+        Schedules register real OS tasks via{" "}
+        <code style={{ color: "var(--accent-purple)" }}>schtasks</code>{" "}
+        (Windows) or{" "}
+        <code style={{ color: "var(--accent-purple)" }}>crontab</code>{" "}
+        (macOS/Linux). Toggle OFF to pause without deleting.
       </div>
     </div>
   );

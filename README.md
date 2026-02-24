@@ -164,27 +164,61 @@ src-tauri/           # Rust backend (Tauri commands, capabilities, plugins)
 
 ## Quick Start
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (LTS recommended)
-- [pnpm](https://pnpm.io/)
-- [Rust toolchain](https://www.rust-lang.org/tools/install) (for Tauri)
-
-### Install and Run
-
 ```bash
-# Clone the repository
 git clone https://github.com/DatafyingTech/AUI.git
 cd AUI
-
-# Install dependencies
 pnpm install
-
-# Run the full desktop app (native FS, shell, and dialog access)
 pnpm tauri dev
 ```
 
+That's it -- four commands from clone to running app. See [Prerequisites](#prerequisites) below if you need to set up your environment first.
+
 > **Note:** Running `pnpm dev` starts only the Vite frontend without native Tauri features. For the full experience -- file access, skill deployment, terminal spawning -- use `pnpm tauri dev`.
+
+### Prerequisites
+
+You need three things installed before running the Quick Start commands:
+
+| Requirement | Version | Install |
+|-------------|---------|---------|
+| **Node.js** | 18+ | [nodejs.org](https://nodejs.org/) |
+| **pnpm** | 9+ | `npm install -g pnpm` |
+| **Rust** | latest stable | See [platform notes](#platform-setup) below |
+
+### Platform Setup
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+1. Install [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/visual-cpp-build-tools/) -- select the **"Desktop development with C++"** workload
+2. Install Rust via [rustup-init.exe](https://rustup.rs/)
+3. Restart your terminal, then run the Quick Start commands
+
+</details>
+
+<details>
+<summary><strong>macOS</strong></summary>
+
+```bash
+xcode-select --install
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Restart your terminal, then run the Quick Start commands.
+
+</details>
+
+<details>
+<summary><strong>Linux (Debian/Ubuntu)</strong></summary>
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Restart your terminal, then run the Quick Start commands.
+
+</details>
 
 ### Build for Production
 

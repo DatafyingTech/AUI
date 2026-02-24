@@ -1,5 +1,24 @@
 # AUI (Agent UI) — Changelog
 
+## v0.3.6 — February 24, 2026
+
+### New Features
+- **Real task scheduler backend** — schedule jobs now create actual OS-level scheduled tasks via Rust commands: Windows Task Scheduler (`schtasks.exe`) on Windows, crontab on macOS/Linux. Three new Tauri commands: `create_scheduled_task`, `list_scheduled_tasks`, `delete_scheduled_task`
+- **Repeat options for schedules** — replaced raw cron expression input with a user-friendly repeat picker (Once, Hourly, Daily, Weekly, Custom cron). Time picker for selecting run time. Schedules panel shows all jobs with human-readable repeat labels
+- **Custom AUI app icon** — replaced the default Tauri icon with a custom-designed AUI logo across all icon sizes (ICO, ICNS, PNG) for Windows, macOS, and Linux
+
+### Enhancements
+- **Root node badge shows "YOU"** — the root node on the canvas now displays a "YOU" badge instead of the generic kind label, making the org tree more intuitive
+- **Lighter sub-agent color** — sub-agent nodes now use a softer blue (`#a5d6ff`) for better visual contrast against parent agents
+- **One-command install in README** — Quick Start section now leads with a four-line clone-to-running-app snippet, plus collapsible platform-specific setup guides for Windows, macOS, and Linux
+
+### Technical
+- Added `create_scheduled_task`, `list_scheduled_tasks`, `delete_scheduled_task` Rust commands in `src-tauri/src/lib.rs`
+- New `src/services/scheduler.ts` service for schedule persistence and OS task management
+- SchedulePanel rewritten with repeat picker, time selector, and live job listing from OS
+
+---
+
 ## v0.3.5 — February 24, 2026
 
 ### Enhancements

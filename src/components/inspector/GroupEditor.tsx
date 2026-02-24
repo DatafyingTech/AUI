@@ -1011,7 +1011,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
           // Determine if this child is a sub-agent (its parent is an agent-in-team, not a top-level team)
           const isChildSubAgent = isMember && child.kind === "group";
           const badgeLabel = isChildSubAgent ? "sub-agent" : child.kind;
-          const badgeColor = isChildSubAgent ? "#58a6ff" : (kindBadgeColors[child.kind] ?? "var(--text-secondary)");
+          const badgeColor = isChildSubAgent ? "#a5d6ff" : (kindBadgeColors[child.kind] ?? "var(--text-secondary)");
 
           return (
             <div
