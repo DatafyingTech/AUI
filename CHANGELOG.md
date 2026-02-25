@@ -1,4 +1,43 @@
-# AUI (Agent UI) — Changelog
+# ATM (Agent Team Manager) — Changelog
+
+## v0.5.0 — February 25, 2026
+
+### Rebrand: AUI → ATM (Agent Team Manager)
+- **App renamed to ATM** — "Agent Team Manager" replaces "Agent UI" across the entire app
+- **Window title** — now reads "ATM — Agent Team Manager"
+- **Toolbar logo** — shows "ATM" with "Agent Team Manager" subtitle
+- **Welcome screen** — updated to "Welcome to ATM"
+- **Tauri config** — product name, identifier, and description updated
+- **Package name** — `aui` → `atm` in package.json and Cargo.toml
+- Note: `.aui/` config directory unchanged for backward compatibility
+
+### New Feature: Project Manager (Pipeline Nodes)
+- **New node type: Pipeline** — a sequential pipeline that runs teams one after another, with each step having its own deploy prompt
+- **Magenta visual identity** — pipeline nodes appear in magenta (#d946ef) with dashed borders and a "PROJECT MGR" badge
+- **Step count display** — pipeline nodes show "N steps" on the canvas, similar to how teams show agent count
+- **PipelineEditor** — full inspector panel editor with:
+  - Name and description fields (auto-save)
+  - Ordered step list with numbered badges
+  - Team dropdown per step (same team can appear multiple times)
+  - Per-step deploy prompt textarea
+  - Move Up/Down, Duplicate, and Delete controls per step
+  - "Play All" button to deploy the entire pipeline sequentially
+  - "Schedule" button to set up recurring pipeline runs
+- **Sequential deployment** — "Play All" generates a primer for each step and creates a single script that runs each team's Claude session in sequence (step 1 finishes → step 2 starts → ...)
+- **Pipeline scheduling** — pipelines appear in the Schedule panel's team selector with a "[Pipeline]" prefix; per-step prompts are used instead of a single deploy prompt
+- **Canvas context menu** — right-click on empty canvas now shows "New Team" and "New Project Manager" (Skill option removed)
+- **Create dialog** — root-level options are now "Team", "Agent", "Project Manager" (Skill removed from root); inside a team: "Agent" only
+
+### Technical
+- New `PipelineStep` interface: `{ id, teamId, prompt }`
+- Added `pipelineSteps: PipelineStep[]` field to `AuiNode`
+- New `NodeKind` value: `"pipeline"`
+- Tree metadata groups array now stores `kind` and `pipelineSteps` for pipeline nodes
+- New store methods: `createPipelineNode`, `updatePipelineSteps`, `deployPipeline`
+- New component: `src/components/inspector/PipelineEditor.tsx`
+- Deploy script generation produces `.ps1` (Windows) and `.sh` (macOS/Linux) scripts in `.aui/pipeline-{slug}/`
+
+---
 
 ## v0.4.2 — February 25, 2026
 

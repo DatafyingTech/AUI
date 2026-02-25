@@ -136,11 +136,15 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
   const [prompt, setPrompt] = useState("");
   const [creating, setCreating] = useState(false);
 
-  // Get top-level teams
+  // Get top-level teams and pipelines
   const teams: AuiNode[] = [];
   for (const n of nodes.values()) {
-    if (n.kind === "group" && n.parentId === "root") teams.push(n);
+    if ((n.kind === "group" || n.kind === "pipeline") && n.parentId === "root") teams.push(n);
   }
+
+  // Check if selected is a pipeline
+  const selectedNode = selectedTeamId ? nodes.get(selectedTeamId) : null;
+  const isPipelineSelected = selectedNode?.kind === "pipeline";
 
   // Auto-select team when opened from GroupEditor's Schedule button
   useEffect(() => {
@@ -291,13 +295,6 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
     setCreating(true);
     try {
-      // Generate skill files first (non-fatal if it fails)
-      try {
-        await generateTeamSkillFiles(selectedTeamId);
-      } catch {
-        // continue
-      }
-
       // Build cron and repeat
       let cron: string;
       const repeat = repeatType;
@@ -307,9 +304,21 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         cron = buildCron(repeatType, schedHour, schedMinute);
       }
 
-      // Build primer
-      const objective = prompt.trim() || "Complete the tasks assigned to this team.";
-      const primerContent = await buildPrimer(team, objective);
+      let primerContent: string;
+      if (team.kind === "pipeline") {
+        // For pipelines, the primer is a note that the deploy script handles sequencing
+        primerContent = `Pipeline: ${team.name}\nSteps: ${team.pipelineSteps.length}\nThis schedule runs the pipeline deploy script which executes all steps sequentially.`;
+      } else {
+        // Generate skill files first (non-fatal if it fails)
+        try {
+          await generateTeamSkillFiles(selectedTeamId);
+        } catch {
+          // continue
+        }
+        // Build primer for teams
+        const objective = prompt.trim() || "Complete the tasks assigned to this team.";
+        primerContent = await buildPrimer(team, objective);
+      }
 
       // Create OS-level scheduled task
       await createSchedule(
@@ -462,18 +471,18 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
               New Schedule
             </div>
 
-            {/* Team selector */}
+            {/* Team/Pipeline selector */}
             <div style={{ marginBottom: 10 }}>
-              <label style={labelStyle}>Team</label>
+              <label style={labelStyle}>Team / Pipeline</label>
               <select
                 style={inputStyle}
                 value={selectedTeamId}
                 onChange={(e) => setSelectedTeamId(e.target.value)}
               >
-                <option value="">Select a team...</option>
+                <option value="">Select a team or pipeline...</option>
                 {teams.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.name}
+                    {t.kind === "pipeline" ? `[Pipeline] ${t.name}` : t.name}
                   </option>
                 ))}
               </select>
@@ -564,17 +573,24 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
               </div>
             )}
 
-            {/* Deploy prompt */}
-            <div style={{ marginBottom: 12 }}>
-              <label style={labelStyle}>Deploy Prompt</label>
-              <textarea
-                rows={3}
-                style={{ ...inputStyle, resize: "vertical" }}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="What should this team accomplish on each run?"
-              />
-            </div>
+            {/* Deploy prompt — hidden for pipelines (prompts are per-step) */}
+            {!isPipelineSelected && (
+              <div style={{ marginBottom: 12 }}>
+                <label style={labelStyle}>Deploy Prompt</label>
+                <textarea
+                  rows={3}
+                  style={{ ...inputStyle, resize: "vertical" }}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="What should this team accomplish on each run?"
+                />
+              </div>
+            )}
+            {isPipelineSelected && (
+              <div style={{ marginBottom: 12, fontSize: 11, color: "var(--text-secondary)", fontStyle: "italic" }}>
+                Pipeline prompts are configured per-step in the Project Manager editor.
+              </div>
+            )}
 
             {/* Actions */}
             <div style={{ display: "flex", gap: 6 }}>

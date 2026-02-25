@@ -29,6 +29,7 @@ function App() {
   const createAgentNode = useTreeStore((s) => s.createAgentNode);
   const createSkillNode = useTreeStore((s) => s.createSkillNode);
   const createGroupNode = useTreeStore((s) => s.createGroupNode);
+  const createPipelineNode = useTreeStore((s) => s.createPipelineNode);
   const assignSkillToNode = useTreeStore((s) => s.assignSkillToNode);
   const deleteNodeFromDisk = useTreeStore((s) => s.deleteNodeFromDisk);
   const unwatchRef = useRef<(() => void) | null>(null);
@@ -37,10 +38,11 @@ function App() {
     ? nodes.get(deleteDialogNodeId)?.name ?? ""
     : "";
 
-  const handleCreate = async (kind: "agent" | "skill" | "group", name: string, description: string, parentId: string | null, skillIds: string[]) => {
+  const handleCreate = async (kind: "agent" | "skill" | "group" | "pipeline", name: string, description: string, parentId: string | null, skillIds: string[]) => {
     try {
       const resolvedParentId = parentId ?? useUiStore.getState().createDialogParentId ?? undefined;
       if (kind === "agent") await createAgentNode(name, description, resolvedParentId);
+      else if (kind === "pipeline") createPipelineNode(name, description, resolvedParentId);
       else if (kind === "group") createGroupNode(name, description, resolvedParentId);
       else await createSkillNode(name, description, resolvedParentId);
 

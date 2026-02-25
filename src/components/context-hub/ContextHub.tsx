@@ -399,6 +399,7 @@ async function importSkillContent(
     assignedSkills: [],
     variables: [],
     launchPrompt: "",
+    pipelineSteps: [],
   });
 
   setSkillItems((prev) => [
@@ -724,6 +725,7 @@ export function ContextHub() {
         assignedSkills: [],
         variables: [],
         launchPrompt: "",
+        pipelineSteps: [],
       });
     }
   };

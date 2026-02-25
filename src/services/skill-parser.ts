@@ -50,5 +50,6 @@ export async function parseSkillFile(
     assignedSkills: [],
     variables: [],
     launchPrompt: "",
+    pipelineSteps: [],
   };
 }

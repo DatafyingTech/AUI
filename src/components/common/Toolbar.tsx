@@ -70,7 +70,7 @@ export function Toolbar() {
             letterSpacing: "0.05em",
           }}
         >
-          AUI
+          ATM
         </span>
         <span
           style={{
@@ -80,7 +80,7 @@ export function Toolbar() {
             letterSpacing: "0.02em",
           }}
         >
-          Agent UI
+          Agent Team Manager
         </span>
       </div>
 

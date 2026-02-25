@@ -3,7 +3,7 @@ import { useUiStore } from "@/store/ui-store";
 import { useTreeStore } from "@/store/tree-store";
 import { scanAllSkills, type SkillInfo } from "@/services/skill-scanner";
 
-type CreateKind = "agent" | "skill" | "group";
+type CreateKind = "agent" | "skill" | "group" | "pipeline";
 
 interface CreateNodeDialogProps {
   open: boolean;
@@ -99,7 +99,7 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
       const parent = nodes.get(pid);
       if (parent?.kind === "group") {
         setKind("group");
-      } else if (createDialogDefaultKind && ["agent", "skill", "group"].includes(createDialogDefaultKind)) {
+      } else if (createDialogDefaultKind && ["agent", "skill", "group", "pipeline"].includes(createDialogDefaultKind)) {
         setKind(createDialogDefaultKind as CreateKind);
       } else {
         setKind("group");
@@ -129,19 +129,18 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
 
   const parentNode = parentId ? nodes.get(parentId) : null;
   const isInsideTeam = parentNode?.kind === "group";
-  const nameValid = kind === "group" ? GROUP_NAME_PATTERN.test(name) : NAME_PATTERN.test(name);
+  const nameValid = kind === "group" || kind === "pipeline" ? GROUP_NAME_PATTERN.test(name) : NAME_PATTERN.test(name);
   const showError = touched && name.length > 0 && !nameValid;
   const parentLabel = parentNode ? parentNode.name : "Root";
 
   const kindOptions: Array<{ value: CreateKind; label: string; color: string }> = isInsideTeam
     ? [
         { value: "group", label: "Agent", color: "#f0883e" },
-        { value: "skill", label: "Skill", color: "var(--accent-green)" },
       ]
     : [
         { value: "group", label: "Team", color: "var(--accent-blue)" },
         { value: "agent", label: "Agent", color: "#f0883e" },
-        { value: "skill", label: "Skill", color: "var(--accent-green)" },
+        { value: "pipeline", label: "Project Manager", color: "#d946ef" },
       ];
 
   function toggleSkill(skillId: string) {
@@ -158,7 +157,9 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
   // For skill kind with "new" mode or other kinds: use normal create flow
   const canCreate = kind === "skill"
     ? skillMode === "new" && nameValid
-    : nameValid;
+    : kind === "pipeline"
+      ? nameValid
+      : nameValid;
 
   const handleSubmit = () => {
     if (kind === "skill" && skillMode === "existing" && selectedExistingSkillId) {
@@ -375,7 +376,7 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
                 setName(e.target.value);
                 setTouched(true);
               }}
-              placeholder={kind === "group" ? (isInsideTeam ? "Content Writer" : "Social Media Team") : kind === "skill" ? "my-skill-name" : "my-agent-name"}
+              placeholder={kind === "pipeline" ? "Content Pipeline" : kind === "group" ? (isInsideTeam ? "Content Writer" : "Social Media Team") : kind === "skill" ? "my-skill-name" : "my-agent-name"}
               style={{
                 width: "100%",
                 padding: "8px 12px",
@@ -390,7 +391,7 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
             />
             {showError && (
               <span style={{ color: "#f85149", fontSize: 11, marginTop: 4, display: "block" }}>
-                {kind === "group"
+                {kind === "group" || kind === "pipeline"
                   ? "Name must be 2-50 characters"
                   : "Name must be lowercase with dashes only (e.g. my-skill)"}
               </span>
@@ -426,7 +427,7 @@ export function CreateNodeDialog({ open, onClose, onCreate }: CreateNodeDialogPr
           </label>
         )}
 
-        {/* Skills section for agent and group nodes */}
+        {/* Skills section for agent and group nodes (not pipeline) */}
         {(kind === "agent" || kind === "group") && availableSkills.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <span style={{ color: "var(--text-secondary)", fontSize: 12, display: "block", marginBottom: 8 }}>

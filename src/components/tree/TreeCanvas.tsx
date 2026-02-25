@@ -206,7 +206,7 @@ export function TreeCanvas() {
   const onNodeDragStart = useCallback(
     (_event: React.MouseEvent, draggedNode: Node) => {
       const auiNode = treeNodes.get(draggedNode.id);
-      if (!auiNode || auiNode.kind !== "group") {
+      if (!auiNode || (auiNode.kind !== "group" && auiNode.kind !== "pipeline")) {
         dragStartRef.current = null;
         return;
       }
@@ -390,7 +390,7 @@ export function TreeCanvas() {
     if (!nodeId) {
       const paneKinds: { label: string; kind: NodeKind }[] = [
         { label: "New Team", kind: "group" },
-        { label: "New Skill", kind: "skill" },
+        { label: "New Project Manager", kind: "pipeline" },
       ];
       return paneKinds.map(({ label, kind }) => ({
         label,
@@ -540,6 +540,7 @@ export function TreeCanvas() {
               settings: "#6e7681",
               human: "#d29922",
               context: "#8b5cf6",
+              pipeline: "#d946ef",
             };
             return (kind && colors[kind]) || "#4a9eff";
           }}
@@ -590,7 +591,7 @@ export function TreeCanvas() {
                 letterSpacing: "-0.01em",
               }}
             >
-              Welcome to AUI
+              Welcome to ATM
             </div>
             <div
               style={{
@@ -599,7 +600,7 @@ export function TreeCanvas() {
                 marginBottom: 24,
               }}
             >
-              Visual manager for Claude Code agent teams
+              Agent Team Manager for Claude Code
             </div>
             <div
               style={{

@@ -4,19 +4,20 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Claude AI](https://img.shields.io/badge/Powered_by-Claude_AI-6B4FBB)](https://www.anthropic.com/claude)
 
-# AUI -- Agent UI
+# ATM -- Agent Team Manager
 
 **The org chart for your AI workforce.**
 
-AUI is a desktop app that lets you build, manage, and deploy teams of AI employees -- visually. Design your org structure on a drag-and-drop canvas, create detailed skill trees that define what each employee can do, set recurring work schedules, and send entire teams to work with a single click. Think of it as the HR dashboard for your AI company.
+ATM is a desktop app that lets you build, manage, and deploy teams of AI employees -- visually. Design your org structure on a drag-and-drop canvas, create detailed skill trees that define what each employee can do, set recurring work schedules, chain teams into sequential pipelines, and send entire teams to work with a single click. Think of it as the HR dashboard for your AI company.
 
-## Why AUI?
+## Why ATM?
 
 - **Design teams visually** -- map out your AI workforce on an interactive org chart. Drag employees between teams, collapse departments, and see your entire operation at a glance
-- **Create detailed skill trees** -- define exactly what each AI employee can do with structured skill files. AUI auto-generates comprehensive skill profiles including context, tools, permissions, and coordination rules
-- **Set employee schedules** -- attach recurring schedules to any team using real OS-level task scheduling. Your AI employees show up for work on time, every time -- even when AUI is closed
-- **Deploy with one click** -- write a brief, AUI generates a full deployment primer with company context, skill files, variables, and team structure, then launches your crew in an external terminal
-- **Zero lock-in** -- AUI reads and writes standard Claude Code config files. Stop using it anytime and everything still works
+- **Create detailed skill trees** -- define exactly what each AI employee can do with structured skill files. ATM auto-generates comprehensive skill profiles including context, tools, permissions, and coordination rules
+- **Project Manager pipelines** -- chain multiple teams into sequential workflows. Team 1 finishes, team 2 starts, team 3 follows. Each step gets its own objective. Play all steps with one click or schedule the whole pipeline
+- **Set employee schedules** -- attach recurring schedules to any team or pipeline using real OS-level task scheduling. Your AI employees show up for work on time, every time -- even when ATM is closed
+- **Deploy with one click** -- write a brief, ATM generates a full deployment primer with company context, skill files, variables, and team structure, then launches your crew in an external terminal
+- **Zero lock-in** -- ATM reads and writes standard Claude Code config files. Stop using it anytime and everything still works
 
 ---
 
@@ -55,13 +56,14 @@ Design your AI workforce on a full pan/zoom/drag canvas powered by React Flow. E
 | Team | Blue | TEAM |
 | Employee | Orange | EMPLOYEE |
 | Sub-Employee | Light Blue | SUB-EMPLOYEE |
+| Project Manager | Magenta | PROJECT MGR |
 | Skill | Green | SKILL |
 
 Drag employees between teams to reorganize. Collapse or expand entire departments to manage complexity. Hover over any employee to reveal quick actions, right-click for a context menu, or hover over connection lines to insert new employees between existing pairs. Save multiple named layouts and switch between them instantly. Start fresh anytime with the blank layout option.
 
 ### Skill Trees
 
-Every AI employee needs to know what they're good at. AUI lets you create and assign detailed skill files (`SKILL.md`) that define each employee's expertise. When you deploy a team, AUI auto-generates comprehensive skill profiles that include:
+Every AI employee needs to know what they're good at. ATM lets you create and assign detailed skill files (`SKILL.md`) that define each employee's expertise. When you deploy a team, ATM auto-generates comprehensive skill profiles that include:
 
 - Company and team context
 - Global and team-scoped skills with inline content
@@ -71,26 +73,38 @@ Every AI employee needs to know what they're good at. AUI lets you create and as
 
 ### AI-Powered Hiring
 
-Describe your company or project, specify how many teams and employees you want, and AUI generates the perfect org structure -- complete with team names, employee roles, and descriptions. You can also:
+Describe your company or project, specify how many teams and employees you want, and ATM generates the perfect org structure -- complete with team names, employee roles, and descriptions. You can also:
 
 - **Generate descriptions** for individual employees with one click
 - **Batch-generate** by multi-selecting employees (Ctrl+click) and generating all descriptions at once
-- **Fine-tune counts** -- specify exact team and employee counts and AUI delivers precisely what you asked for
+- **Fine-tune counts** -- specify exact team and employee counts and ATM delivers precisely what you asked for
 
 ### One-Click Deploy
 
 Send an entire team to work directly from the canvas:
 
 1. Write a deploy prompt describing what the team should accomplish
-2. AUI generates any missing skill files (existing ones are preserved)
+2. ATM generates any missing skill files (existing ones are preserved)
 3. A comprehensive briefing is built -- company context, team overview, all skill file contents, variables, and coordination rules
 4. An external terminal opens and launches Claude CLI with the full briefing
 
 The briefing is also saved to `.aui/deploy-primer.md` for reference.
 
+### Project Manager (Pipeline)
+
+Chain multiple teams into a sequential workflow where each step runs to completion before the next begins:
+
+1. Create a Project Manager node from the canvas context menu or create dialog
+2. Add steps in the inspector -- each step picks a team and sets a deployment prompt
+3. Reorder, duplicate, or remove steps as needed -- the same team can appear multiple times with different objectives
+4. Click **Play All** to run the entire pipeline in one terminal session (step 1 finishes, step 2 starts, etc.)
+5. Or click **Schedule** to set up a recurring pipeline run via OS-level task scheduling
+
+Each step generates its own deployment primer with full team context. The deploy script runs each Claude session sequentially, ensuring orderly execution.
+
 ### Employee Schedules
 
-Set up recurring work schedules using real OS-level task scheduling -- Windows Task Scheduler on Windows, crontab on macOS/Linux. Your AI employees show up for work on time, every time, even when AUI is closed.
+Set up recurring work schedules using real OS-level task scheduling -- Windows Task Scheduler on Windows, crontab on macOS/Linux. Your AI employees show up for work on time, every time, even when ATM is closed.
 
 - **Flexible timing** -- once, hourly, daily, weekly, or custom cron expressions
 - **Team selector** -- pick any team from your canvas to schedule
@@ -121,7 +135,7 @@ Click any employee to open their full profile in the side inspector. All changes
 
 ### Download (Recommended)
 
-**[Download AUI for Windows](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.exe` installer and you're running in seconds.
+**[Download ATM for Windows](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.exe` installer and you're running in seconds.
 
 > macOS and Linux installers coming soon. For now, build from source below.
 
@@ -219,7 +233,7 @@ Produces platform-specific installers in `src-tauri/target/release/bundle/`.
 
 ## Configuration
 
-AUI stores its configuration in a `.aui/` directory at the project root:
+ATM stores its configuration in a `.aui/` directory at the project root:
 
 | File | Purpose |
 |------|---------|
@@ -267,4 +281,4 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-If AUI helps you manage your AI workforce, consider giving it a star -- it helps others discover the project.
+If ATM helps you manage your AI workforce, consider giving it a star -- it helps others discover the project.

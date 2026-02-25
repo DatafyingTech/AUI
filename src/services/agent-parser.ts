@@ -50,5 +50,6 @@ export async function parseAgentFile(
     assignedSkills: [],
     variables: [],
     launchPrompt: "",
+    pipelineSteps: [],
   };
 }

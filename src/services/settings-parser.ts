@@ -37,6 +37,7 @@ export async function parseSettingsFile(
       assignedSkills: [],
       variables: [],
       launchPrompt: "",
+      pipelineSteps: [],
     };
   }
 
@@ -63,5 +64,6 @@ export async function parseSettingsFile(
     assignedSkills: [],
     variables: [],
     launchPrompt: "",
+    pipelineSteps: [],
   };
 }

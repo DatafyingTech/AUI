@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { readTextFile, writeTextFile, exists, mkdir, remove } from "@tauri-apps/plugin-fs";
-import type { AuiNode, TreeMetadata, TreeExport } from "@/types/aui-node";
+import type { AuiNode, TreeMetadata, TreeExport, PipelineStep } from "@/types/aui-node";
 import { scanProject } from "@/services/file-scanner";
 import { parseAgentFile } from "@/services/agent-parser";
 import { parseSkillFile } from "@/services/skill-parser";
@@ -41,6 +41,9 @@ interface TreeActions {
   createAgentNode(name: string, description: string, parentId?: string): Promise<void>;
   createSkillNode(name: string, description: string, parentId?: string): Promise<void>;
   createGroupNode(name: string, description: string, parentId?: string): void;
+  createPipelineNode(name: string, description: string, parentId?: string): void;
+  updatePipelineSteps(nodeId: string, steps: PipelineStep[]): void;
+  deployPipeline(nodeId: string): Promise<void>;
   cacheSkillName(id: string, name: string): void;
   assignSkillToNode(nodeId: string, skillId: string): void;
   removeSkillFromNode(nodeId: string, skillId: string): void;
@@ -81,6 +84,7 @@ function createRootNode(name: string): AuiNode {
     assignedSkills: [],
     variables: [],
     launchPrompt: "",
+    pipelineSteps: [],
   };
 }
 
@@ -127,6 +131,7 @@ async function parseFile(
         assignedSkills: [],
         variables: [],
         launchPrompt: "",
+        pipelineSteps: [],
       };
     }
   }
@@ -180,13 +185,13 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         }
       }
 
-      // Restore group nodes from metadata (they have no files on disk)
+      // Restore group/pipeline nodes from metadata (they have no files on disk)
       if (metadata?.groups) {
         for (const g of metadata.groups) {
           nodes.set(g.id, {
             id: g.id,
             name: g.name,
-            kind: "group",
+            kind: g.kind === "pipeline" ? "pipeline" : "group",
             parentId: g.parentId,
             team: g.team,
             sourcePath: "",
@@ -198,6 +203,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
             assignedSkills: g.assignedSkills ?? [],
             variables: g.variables ?? [],
             launchPrompt: g.launchPrompt ?? "",
+            pipelineSteps: g.pipelineSteps ?? [],
           });
         }
       }
@@ -303,14 +309,14 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     const hierarchy: Record<string, string | null> = {};
     const positions = metadata?.positions ?? {};
 
-    // Collect group nodes for persistence (they have no files on disk)
+    // Collect group/pipeline nodes for persistence (they have no files on disk)
     const groups: TreeMetadata["groups"] = [];
 
     for (const [id, node] of nodes) {
       if (id === "root") continue;
       hierarchy[id] = node.parentId;
 
-      if (node.kind === "group") {
+      if (node.kind === "group" || node.kind === "pipeline") {
         groups.push({
           id: node.id,
           name: node.name,
@@ -320,6 +326,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
           assignedSkills: node.assignedSkills,
           variables: node.variables,
           launchPrompt: node.launchPrompt,
+          kind: node.kind === "pipeline" ? "pipeline" : "group",
+          pipelineSteps: node.pipelineSteps.length > 0 ? node.pipelineSteps : undefined,
         });
       }
     }
@@ -394,6 +402,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       assignedSkills: [],
       variables: [],
       launchPrompt: "",
+      pipelineSteps: [],
     };
 
     set((state) => {
@@ -434,6 +443,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       assignedSkills: [],
       variables: [],
       launchPrompt: "",
+      pipelineSteps: [],
     };
 
     set((state) => {
@@ -460,6 +470,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       assignedSkills: [],
       variables: [],
       launchPrompt: "",
+      pipelineSteps: [],
     };
 
     set((state) => {
@@ -469,6 +480,237 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     });
 
     get().saveTreeMetadata();
+  },
+
+  createPipelineNode(name: string, description: string, parentId?: string) {
+    const id = `pipeline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const node: AuiNode = {
+      id,
+      name,
+      kind: "pipeline",
+      parentId: parentId ?? "root",
+      team: null,
+      sourcePath: "",
+      config: null,
+      promptBody: description,
+      tags: [],
+      lastModified: Date.now(),
+      validationErrors: [],
+      assignedSkills: [],
+      variables: [],
+      launchPrompt: "",
+      pipelineSteps: [],
+    };
+
+    set((state) => {
+      const next = new Map(state.nodes);
+      next.set(id, node);
+      return { nodes: next };
+    });
+
+    get().saveTreeMetadata();
+  },
+
+  updatePipelineSteps(nodeId: string, steps: PipelineStep[]) {
+    set((state) => {
+      const existing = state.nodes.get(nodeId);
+      if (!existing || existing.kind !== "pipeline") return state;
+      const next = new Map(state.nodes);
+      next.set(nodeId, { ...existing, pipelineSteps: steps, lastModified: Date.now() });
+      return { nodes: next };
+    });
+    get().saveTreeMetadata();
+  },
+
+  async deployPipeline(nodeId: string) {
+    const { nodes, projectPath } = get();
+    if (!projectPath) return;
+
+    const pipeline = nodes.get(nodeId);
+    if (!pipeline || pipeline.kind !== "pipeline") return;
+    if (pipeline.pipelineSteps.length === 0) return;
+
+    const slug = pipeline.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const pipelineDir = join(projectPath, ".aui", `pipeline-${slug}`);
+
+    if (!(await exists(pipelineDir))) {
+      await mkdir(pipelineDir, { recursive: true });
+    }
+
+    // Resolve skill name helper
+    const { skillNameCache } = get();
+    const resolveSkillName = (sid: string): string | null => {
+      const n = nodes.get(sid);
+      if (n?.name) return n.name;
+      const cached = skillNameCache.get(sid);
+      if (cached) return cached;
+      return null;
+    };
+
+    // Helper: read skill file from disk
+    const readSkillFile = async (skillSlug: string): Promise<string> => {
+      try {
+        const path = join(projectPath, ".claude", "skills", skillSlug, "SKILL.md");
+        if (await exists(path)) return await readTextFile(path);
+      } catch { /* ignore */ }
+      return "";
+    };
+
+    // Generate primer for each step
+    const primerPaths: string[] = [];
+    const stepTeamNames: string[] = [];
+
+    for (let i = 0; i < pipeline.pipelineSteps.length; i++) {
+      const step = pipeline.pipelineSteps[i];
+      const teamNode = nodes.get(step.teamId);
+      if (!teamNode) continue;
+
+      const teamSlug = teamNode.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      stepTeamNames.push(teamNode.name);
+
+      // Get root context
+      const rootNode = nodes.get("root");
+      const rootName = rootNode?.name ?? "Unknown";
+      const rootDesc = rootNode?.promptBody ?? "";
+      const globalSkillNames = (rootNode?.assignedSkills ?? [])
+        .map((sid) => resolveSkillName(sid))
+        .filter((n): n is string => n !== null);
+
+      // Sibling teams
+      const siblingTeams: string[] = [];
+      for (const n of nodes.values()) {
+        if (n.kind === "group" && n.parentId === "root" && n.id !== teamNode.id) {
+          siblingTeams.push(n.name);
+        }
+      }
+
+      // Children of the team
+      const children: AuiNode[] = [];
+      for (const n of nodes.values()) {
+        if (n.parentId === teamNode.id) children.push(n);
+      }
+
+      // Read manager skill
+      const managerSkillContent = await readSkillFile(`${teamSlug}-manager`);
+
+      // Build agent blocks
+      const agentBlocks: string[] = [];
+      for (const agent of children) {
+        const agentSlug = agent.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const skillContent = await readSkillFile(`${teamSlug}-${agentSlug}`);
+        let block = `\n### Agent: ${agent.name} (slug: "${agentSlug}")\n`;
+        if (agent.promptBody) block += `Role: ${agent.promptBody}\n`;
+        if (skillContent) {
+          block += `\n<skill-file name="${teamSlug}-${agentSlug}">\n${skillContent}\n</skill-file>\n`;
+        }
+        agentBlocks.push(block);
+      }
+
+      // Team skills
+      const teamSkillBlocks: string[] = [];
+      for (const sid of teamNode.assignedSkills) {
+        const sName = resolveSkillName(sid);
+        if (sName) teamSkillBlocks.push(`- /${sName}`);
+      }
+
+      const objective = step.prompt || "Complete the tasks assigned to this team.";
+
+      const primer = `You are being deployed as the senior team manager for "${teamNode.name}".
+This is step ${i + 1} of ${pipeline.pipelineSteps.length} in pipeline "${pipeline.name}".
+
+## Company / Organization Context
+- **Owner:** ${rootName}
+${rootDesc ? `- **Description:** ${rootDesc}` : ""}
+${globalSkillNames.length > 0 ? `- **Global Skills:** ${globalSkillNames.join(", ")}` : ""}
+${siblingTeams.length > 0 ? `- **Other Teams:** ${siblingTeams.join(", ")}` : ""}
+
+## Team: ${teamNode.name}
+${teamNode.promptBody || "(no description)"}
+${teamSkillBlocks.length > 0 ? `\n### Team Skills\n${teamSkillBlocks.join("\n")}` : ""}
+
+## Your Manager Skill File
+${managerSkillContent ? `<skill-file name="${teamSlug}-manager">\n${managerSkillContent}\n</skill-file>` : "(no manager skill file found)"}
+
+## Team Roster (${children.length} agents)
+${agentBlocks.join("\n")}
+
+## OBJECTIVE
+${objective}
+
+## DEPLOYMENT INSTRUCTIONS
+You MUST follow these steps exactly:
+
+1. **Create the team** — Use \`TeamCreate\` with team name \`${teamSlug}\`
+2. **Spawn each agent** — For each agent listed above, use the \`Task\` tool with:
+   - \`team_name: "${teamSlug}"\`
+   - \`subagent_type: "general-purpose"\`
+   - \`name: "<agent-slug>"\` (slugs listed above per agent)
+   - Include their FULL skill file content in the prompt
+3. **Create and assign tasks** — Use \`TaskCreate\` to break the objective into tasks, then \`TaskUpdate\` with \`owner\` to assign
+4. **Coordinate** — Monitor progress via \`TaskList\`, resolve conflicts
+5. **Complete** — When all tasks are done, compile a summary and shut down the team
+${teamSkillBlocks.length > 0 || globalSkillNames.length > 0 ? `\n## SKILLS\nSkills listed above can be invoked using the \`Skill\` tool.` : ""}
+IMPORTANT: Each agent already has their full skill file content above. Pass it directly in their spawn prompt.
+`;
+
+      const primerPath = join(pipelineDir, `step-${i + 1}-primer.md`);
+      await writeTextFile(primerPath, primer);
+      primerPaths.push(primerPath);
+    }
+
+    // Generate deploy script
+    const isWindows = navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
+
+    if (isWindows) {
+      const lines: string[] = [
+        `Remove-Item Env:CLAUDECODE -ErrorAction SilentlyContinue`,
+        `Write-Host "=== Pipeline: ${pipeline.name.replace(/"/g, '`"')} ===" -ForegroundColor Cyan`,
+        `Write-Host "Steps: ${primerPaths.length}" -ForegroundColor Yellow`,
+        `Write-Host ""`,
+      ];
+      for (let i = 0; i < primerPaths.length; i++) {
+        const winPath = primerPaths[i].replace(/\//g, "\\").replace(/'/g, "''");
+        const tName = stepTeamNames[i]?.replace(/'/g, "''") ?? "Team";
+        lines.push(`Write-Host "--- Step ${i + 1}/${primerPaths.length}: ${tName} ---" -ForegroundColor Green`);
+        lines.push(`claude --dangerously-skip-permissions "Read the deployment primer at '${winPath}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`);
+        lines.push(`Write-Host "Step ${i + 1} complete." -ForegroundColor Green`);
+        lines.push(`Write-Host ""`);
+      }
+      lines.push(`Write-Host "=== Pipeline complete ===" -ForegroundColor Cyan`);
+      lines.push(`Read-Host "Press Enter to close"`);
+
+      const scriptPath = join(pipelineDir, "deploy.ps1");
+      await writeTextFile(scriptPath, lines.join("\r\n"));
+      const winScriptPath = scriptPath.replace(/\//g, "\\");
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_terminal", { scriptPath: winScriptPath });
+    } else {
+      const lines: string[] = [
+        "#!/bin/bash",
+        "unset CLAUDECODE",
+        `echo '=== Pipeline: ${pipeline.name.replace(/'/g, "'\\''")} ==='`,
+        `echo 'Steps: ${primerPaths.length}'`,
+        `echo ''`,
+      ];
+      for (let i = 0; i < primerPaths.length; i++) {
+        const path = primerPaths[i].replace(/'/g, "'\\''");
+        const tName = stepTeamNames[i]?.replace(/'/g, "'\\''") ?? "Team";
+        lines.push(`echo '--- Step ${i + 1}/${primerPaths.length}: ${tName} ---'`);
+        lines.push(`claude --dangerously-skip-permissions "Read the deployment primer at '${path}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`);
+        lines.push(`echo 'Step ${i + 1} complete.'`);
+        lines.push(`echo ''`);
+      }
+      lines.push(`echo '=== Pipeline complete ==='`);
+      lines.push(`read -p 'Press Enter to close'`);
+
+      const scriptPath = join(pipelineDir, "deploy.sh");
+      await writeTextFile(scriptPath, lines.join("\n"));
+      const { Command } = await import("@tauri-apps/plugin-shell");
+      const chmod = Command.create("bash", ["-c", `chmod +x '${scriptPath}'`]);
+      await chmod.execute();
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_terminal", { scriptPath });
+    }
   },
 
   cacheSkillName(id: string, name: string) {
@@ -519,8 +761,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     set((state) => {
       const next = new Map(state.nodes);
 
-      if (node.kind === "group") {
-        // For group nodes, recursively remove all descendants too
+      if (node.kind === "group" || node.kind === "pipeline") {
+        // For group/pipeline nodes, recursively remove all descendants too
         function collectDescendants(pid: string): string[] {
           const ids: string[] = [];
           for (const [cid, cnode] of next) {
@@ -552,7 +794,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     if (metadata?.positions) {
       const positions = { ...metadata.positions };
       delete positions[id];
-      if (node.kind === "group") {
+      if (node.kind === "group" || node.kind === "pipeline") {
         // Also clean descendant positions
         for (const key of Object.keys(positions)) {
           if (!get().nodes.has(key)) delete positions[key];
@@ -886,6 +1128,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       assignedSkills: [],
       variables: [],
       launchPrompt: "",
+      pipelineSteps: [],
     };
 
     set((state) => {
@@ -1188,11 +1431,13 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     const teams: AuiNode[] = [];
     const standaloneAgents: AuiNode[] = [];
     const standaloneSkills: AuiNode[] = [];
+    const pipelines: AuiNode[] = [];
 
     for (const [id, node] of nodes) {
       if (id === "root") continue;
       if (node.parentId === "root" || !node.parentId) {
         if (node.kind === "group") teams.push(node);
+        else if (node.kind === "pipeline") pipelines.push(node);
         else if (node.kind === "agent") standaloneAgents.push(node);
         else if (node.kind === "skill") standaloneSkills.push(node);
       }
@@ -1325,7 +1570,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       hierarchy[id] = node.parentId;
       nodeArray.push(node);
 
-      if (node.kind === "group") {
+      if (node.kind === "group" || node.kind === "pipeline") {
         groups.push({
           id: node.id,
           name: node.name,
@@ -1335,6 +1580,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
           assignedSkills: node.assignedSkills,
           variables: node.variables,
           launchPrompt: node.launchPrompt,
+          kind: node.kind === "pipeline" ? "pipeline" : "group",
+          pipelineSteps: node.pipelineSteps.length > 0 ? node.pipelineSteps : undefined,
         });
       }
     }
@@ -1377,13 +1624,13 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       nodes.set(node.id, node);
     }
 
-    // Restore group nodes from the groups array (in case they weren't in nodes)
+    // Restore group/pipeline nodes from the groups array (in case they weren't in nodes)
     for (const g of data.groups) {
       if (!nodes.has(g.id)) {
         nodes.set(g.id, {
           id: g.id,
           name: g.name,
-          kind: "group",
+          kind: g.kind === "pipeline" ? "pipeline" : "group",
           parentId: g.parentId,
           team: g.team,
           sourcePath: "",
@@ -1395,6 +1642,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
           assignedSkills: g.assignedSkills ?? [],
           variables: g.variables ?? [],
           launchPrompt: g.launchPrompt ?? "",
+          pipelineSteps: g.pipelineSteps ?? [],
         });
       }
     }
@@ -1540,13 +1788,13 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       }
     }
 
-    // Restore group nodes from the target layout
+    // Restore group/pipeline nodes from the target layout
     if (targetMeta.groups) {
       for (const g of targetMeta.groups) {
         next.set(g.id, {
           id: g.id,
           name: g.name,
-          kind: "group",
+          kind: g.kind === "pipeline" ? "pipeline" : "group",
           parentId: g.parentId,
           team: g.team,
           sourcePath: "",
@@ -1558,6 +1806,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
           assignedSkills: g.assignedSkills ?? [],
           variables: g.variables ?? [],
           launchPrompt: g.launchPrompt ?? "",
+          pipelineSteps: g.pipelineSteps ?? [],
         });
       }
     }

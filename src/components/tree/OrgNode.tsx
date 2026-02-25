@@ -13,6 +13,7 @@ const KIND_COLORS: Record<NodeKind, string> = {
   human: "#d29922",
   context: "#8b5cf6",
   group: "#4a9eff",
+  pipeline: "#d946ef",
 };
 
 function OrgNodeInner({ data, selected }: NodeProps) {
@@ -21,16 +22,18 @@ function OrgNodeInner({ data, selected }: NodeProps) {
   const hasErrors = node.validationErrors.length > 0;
   const isRoot = node.kind === "human";
   const isGroup = node.kind === "group";
+  const isPipeline = node.kind === "pipeline";
 
-  const description = isGroup
+  const description = isGroup || isPipeline
     ? node.promptBody
     : ((node.config as any)?.description ?? "");
 
-  // Count children for group nodes
+  // Count children for group nodes, step count for pipelines
   const allNodes = useTreeStore((s) => s.nodes);
   const childCount = isGroup
     ? Array.from(allNodes.values()).filter((n) => n.parentId === node.id).length
     : 0;
+  const stepCount = isPipeline ? node.pipelineSteps.length : 0;
 
   const collapsed = useUiStore((s) => s.collapsedGroups.has(node.id));
   const isMultiSelected = useUiStore((s) => s.multiSelectedNodeIds.has(node.id));
@@ -47,8 +50,8 @@ function OrgNodeInner({ data, selected }: NodeProps) {
     : false;
   const isSubAgent = isGroup && (parentNode?.kind === "agent" || parentIsMemberAgent);
 
-  // Team = blue, sub-agent = lighter blue, agent-in-team = orange
-  const color = isSubAgent ? "#a5d6ff" : isMember ? "#f0883e" : KIND_COLORS[node.kind];
+  // Team = blue, sub-agent = lighter blue, agent-in-team = orange, pipeline = magenta
+  const color = isPipeline ? "#d946ef" : isSubAgent ? "#a5d6ff" : isMember ? "#f0883e" : KIND_COLORS[node.kind];
 
   // Resolve assigned skill names (tree node → name cache → raw ID)
   const skillNameCache = useTreeStore((s) => s.skillNameCache);
@@ -65,7 +68,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
     }
   }
 
-  const nodeWidth = isGroup ? 280 : isRoot ? 260 : 240;
+  const nodeWidth = isGroup || isPipeline ? 280 : isRoot ? 260 : 240;
   const glowStrength = selected ? "0 0 12px" : isMultiSelected ? "0 0 10px" : hovered ? "0 0 8px" : "none";
   const borderOpacity = selected ? 1 : 0.7;
 
@@ -96,17 +99,19 @@ function OrgNodeInner({ data, selected }: NodeProps) {
 
   const currentHandleStyle = hovered ? handleHoverStyle : handleBaseStyle;
 
-  const background = isGroup
-    ? isSubAgent
-      ? "rgba(165, 214, 255, 0.06)"
-      : isMember
-        ? "rgba(240, 136, 62, 0.06)"
-        : "rgba(74, 158, 255, 0.06)"
-    : isRoot
-      ? "rgba(210, 153, 34, 0.08)"
-      : "var(--bg-surface, #1c2333)";
+  const background = isPipeline
+    ? "rgba(217, 70, 239, 0.06)"
+    : isGroup
+      ? isSubAgent
+        ? "rgba(165, 214, 255, 0.06)"
+        : isMember
+          ? "rgba(240, 136, 62, 0.06)"
+          : "rgba(74, 158, 255, 0.06)"
+      : isRoot
+        ? "rgba(210, 153, 34, 0.08)"
+        : "var(--bg-surface, #1c2333)";
 
-  const borderLeftStyle = isGroup
+  const borderLeftStyle = isGroup || isPipeline
     ? `4px dashed rgba(${hexToRgb(color)}, ${borderOpacity})`
     : `4px solid rgba(${hexToRgb(color)}, ${borderOpacity})`;
 
@@ -162,7 +167,7 @@ function OrgNodeInner({ data, selected }: NodeProps) {
           borderRadius: 10,
         }}
       >
-        {isRoot ? "YOU" : isSubAgent ? "SUB-AGENT" : isMember ? "AGENT" : isGroup ? "TEAM" : node.kind}
+        {isRoot ? "YOU" : isPipeline ? "PROJECT MGR" : isSubAgent ? "SUB-AGENT" : isMember ? "AGENT" : isGroup ? "TEAM" : node.kind}
       </div>
 
       {/* Name */}
@@ -226,6 +231,22 @@ function OrgNodeInner({ data, selected }: NodeProps) {
           {collapsed && (
             <span style={{ color: "#a0a0a0", fontSize: 10 }}>(collapsed)</span>
           )}
+        </div>
+      )}
+
+      {/* Pipeline step count */}
+      {isPipeline && (
+        <div
+          style={{
+            fontSize: 11,
+            color: "#d946ef",
+            marginTop: 4,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          {stepCount} {stepCount === 1 ? "step" : "steps"}
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { useTreeStore } from "@/store/tree-store";
 import { AgentEditor } from "./AgentEditor";
 import { SkillEditor } from "./SkillEditor";
 import { GroupEditor } from "./GroupEditor";
+import { PipelineEditor } from "./PipelineEditor";
 import { SettingsEditor } from "./SettingsEditor";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { useAutosave } from "@/hooks/useAutosave";
@@ -19,6 +20,7 @@ const kindColors: Record<NodeKind, string> = {
   context: "#8b5cf6",
   settings: "#6e7681",
   group: "#4a9eff",
+  pipeline: "#d946ef",
 };
 
 const badgeStyle = (kind: NodeKind): CSSProperties => ({
@@ -103,6 +105,8 @@ export function InspectorPanel() {
         return <SkillEditor node={node} />;
       case "group":
         return <GroupEditor node={node} />;
+      case "pipeline":
+        return <PipelineEditor node={node} />;
       case "settings":
         return <SettingsEditor node={node} />;
       case "context":
@@ -176,7 +180,7 @@ export function InspectorPanel() {
           <span style={{ fontWeight: 700, fontSize: 18, color: "var(--text-primary)" }}>
             {node.name}
           </span>
-          <span style={badgeStyle(node.kind)}>{node.kind}</span>
+          <span style={badgeStyle(node.kind)}>{node.kind === "pipeline" ? "project mgr" : node.kind}</span>
           <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
             {node.kind !== "human" && (
               <button

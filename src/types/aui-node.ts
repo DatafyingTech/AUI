@@ -2,7 +2,13 @@ import type { AgentConfig } from "./agent";
 import type { SkillConfig } from "./skill";
 import type { SettingsConfig } from "./settings";
 
-export type NodeKind = "human" | "agent" | "skill" | "context" | "settings" | "group";
+export type NodeKind = "human" | "agent" | "skill" | "context" | "settings" | "group" | "pipeline";
+
+export interface PipelineStep {
+  id: string;          // unique step ID (e.g., "step-{timestamp}")
+  teamId: string;      // reference to an existing team (group node)
+  prompt: string;      // deploy prompt for this step
+}
 
 export interface NodeVariable {
   name: string;
@@ -24,6 +30,7 @@ export interface AuiNode {
   assignedSkills: string[];
   variables: NodeVariable[];
   launchPrompt: string;
+  pipelineSteps: PipelineStep[];
 }
 
 export interface TreeExport {
@@ -43,6 +50,8 @@ export interface TreeExport {
     assignedSkills: string[];
     variables: NodeVariable[];
     launchPrompt: string;
+    kind?: "group" | "pipeline";
+    pipelineSteps?: PipelineStep[];
   }>;
   skillNameCache: Record<string, string>;
 }
@@ -63,6 +72,8 @@ export interface TreeMetadata {
     assignedSkills: string[];
     variables: NodeVariable[];
     launchPrompt: string;
+    kind?: "group" | "pipeline";
+    pipelineSteps?: PipelineStep[];
   }>;
   lastModified: number;
 }
