@@ -34,13 +34,18 @@ If you have ever spent 30 minutes hand-crafting a deployment prompt, manually wi
 
 Define variables at any level of your org -- root, team, or agent -- and they cascade downward automatically. Each variable has a **type** (API Key, Password, Note, or Text) and sensitive values are masked by default with an eye toggle to reveal them. When ATM generates a deployment primer, all variables are resolved and included in the briefing so your agents have every credential and config value they need without you pasting anything manually.
 
-### Project Manager Pipelines
+### **New **Project Manager Pipelines
 
 Chain multiple teams into ordered workflows. A Project Manager node lets you define sequential steps -- Team 1 runs to completion, then Team 2 starts, then Team 3 follows. Each step has its own deployment objective. Hit **Play All** to execute the entire pipeline in a single terminal session, or **Schedule** it to run on a recurring basis. The same team can appear in multiple steps with different objectives.
+
+<img width="468" height="965" alt="7" src="https://github.com/user-attachments/assets/5c355b1d-0744-46db-af89-09506693d31c" />
 
 ### Visual Org Chart
 
 Design your AI workforce on a full pan/zoom/drag canvas. Nodes are color-coded by role -- gold for You (the CEO), blue for Teams, orange for Agents, light blue for Sub-Agents, magenta for Project Managers, and green for Skills. Collapse and expand entire departments. Right-click any node for a context menu with **Move to...** reparenting that lists every valid target. Hover over connection lines to insert new nodes between existing pairs. The org chart is not decoration -- it directly defines the team structure that gets deployed.
+
+<img width="1908" height="1000" alt="4" src="https://github.com/user-attachments/assets/65ac7e74-733c-4de2-9533-43bf9c674a09" />
+
 
 ### One-Click Deploy
 
