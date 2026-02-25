@@ -650,7 +650,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
               {deploying ? "Preparing..." : "Deploy Team"}
             </button>
             <button
-              onClick={() => useUiStore.getState().toggleSchedule()}
+              onClick={() => useUiStore.getState().toggleSchedule(node.id)}
               style={{
                 flex: 1,
                 padding: "10px 16px",

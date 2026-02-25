@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import { readTextFile, exists } from "@tauri-apps/plugin-fs";
 import { useTreeStore } from "@/store/tree-store";
+import { useUiStore } from "@/store/ui-store";
 import { join } from "@/utils/paths";
 import { toast } from "@/components/common/Toast";
 import {
@@ -123,6 +124,7 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
   const nodes = useTreeStore((s) => s.nodes);
   const skillNameCache = useTreeStore((s) => s.skillNameCache);
   const generateTeamSkillFiles = useTreeStore((s) => s.generateTeamSkillFiles);
+  const preselectedTeamId = useUiStore((s) => s.schedulePreselectedTeamId);
 
   const [jobs, setJobs] = useState<ScheduleRecord[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -139,6 +141,14 @@ export function SchedulePanel({ onClose }: SchedulePanelProps) {
   for (const n of nodes.values()) {
     if (n.kind === "group" && n.parentId === "root") teams.push(n);
   }
+
+  // Auto-select team when opened from GroupEditor's Schedule button
+  useEffect(() => {
+    if (preselectedTeamId) {
+      setSelectedTeamId(preselectedTeamId);
+      setShowCreate(true);
+    }
+  }, [preselectedTeamId]);
 
   // Load schedules on mount
   useEffect(() => {

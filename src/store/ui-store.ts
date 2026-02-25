@@ -15,6 +15,7 @@ interface UiState {
   chatPanelOpen: boolean;
   settingsOpen: boolean;
   scheduleOpen: boolean;
+  schedulePreselectedTeamId: string | null;
   toasts: Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>;
   collapsedGroups: Set<string>;
   multiSelectedNodeIds: Set<string>;
@@ -35,7 +36,7 @@ interface UiActions {
   setFilterKind(kind: string | null): void;
   toggleChatPanel(): void;
   toggleSettings(): void;
-  toggleSchedule(): void;
+  toggleSchedule(preselectedTeamId?: string): void;
   addToast(message: string, type?: 'success' | 'error' | 'info'): void;
   removeToast(id: string): void;
   toggleCollapse(groupId: string): void;
@@ -62,6 +63,7 @@ export const useUiStore = create<UiStore>()((set, get) => ({
   chatPanelOpen: false,
   settingsOpen: false,
   scheduleOpen: false,
+  schedulePreselectedTeamId: null,
   toasts: [],
   collapsedGroups: new Set<string>(),
   multiSelectedNodeIds: new Set<string>(),
@@ -142,9 +144,10 @@ export const useUiStore = create<UiStore>()((set, get) => ({
     }));
   },
 
-  toggleSchedule() {
+  toggleSchedule(preselectedTeamId?: string) {
     set((state) => ({
       scheduleOpen: !state.scheduleOpen,
+      schedulePreselectedTeamId: !state.scheduleOpen ? (preselectedTeamId ?? null) : null,
       // Close other overlays when opening schedule
       ...(!state.scheduleOpen ? { chatPanelOpen: false, settingsOpen: false, contextHubOpen: false } : {}),
     }));
