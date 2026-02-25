@@ -617,6 +617,16 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       return { nodes: next };
     });
 
+    // Clean up saved positions for deleted nodes
+    const { metadata } = get();
+    if (metadata?.positions) {
+      const positions = { ...metadata.positions };
+      for (const nodeId of allIds) {
+        delete positions[nodeId];
+      }
+      set({ metadata: { ...metadata, positions } });
+    }
+
     // Persist updated metadata after removing nodes
     get().saveTreeMetadata();
   },
