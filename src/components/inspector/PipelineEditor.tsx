@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback, type CSSProperties } from "r
 import { useTreeStore } from "@/store/tree-store";
 import { useUiStore } from "@/store/ui-store";
 import { useAutosave } from "@/hooks/useAutosave";
-import type { AuiNode, PipelineStep } from "@/types/aui-node";
+import type { AuiNode, PipelineStep, NodeVariable } from "@/types/aui-node";
+import { VariableEditor } from "./VariableEditor";
 
 const labelStyle: CSSProperties = {
   fontSize: 12,
@@ -50,6 +51,7 @@ export function PipelineEditor({ node }: { node: AuiNode }) {
   const [name, setName] = useState(node.name);
   const [description, setDescription] = useState(node.promptBody);
   const [steps, setSteps] = useState<PipelineStep[]>(node.pipelineSteps);
+  const [variables, setVariables] = useState<NodeVariable[]>(node.variables);
   const [deploying, setDeploying] = useState(false);
 
   // Re-init state on node change
@@ -57,7 +59,8 @@ export function PipelineEditor({ node }: { node: AuiNode }) {
     setName(node.name);
     setDescription(node.promptBody);
     setSteps(node.pipelineSteps);
-  }, [node.id, node.name, node.promptBody, node.pipelineSteps]);
+    setVariables(node.variables);
+  }, [node.id, node.name, node.promptBody, node.pipelineSteps, node.variables]);
 
   // Available teams: root-level group nodes
   const availableTeams = useMemo(() => {
@@ -70,13 +73,18 @@ export function PipelineEditor({ node }: { node: AuiNode }) {
     return teams.sort((a, b) => a.name.localeCompare(b.name));
   }, [nodes]);
 
-  // Autosave name and description
+  // Autosave name, description, and variables
   const handleSave = useCallback(() => {
-    updateNode(node.id, { name, promptBody: description, lastModified: Date.now() });
+    updateNode(node.id, {
+      name,
+      promptBody: description,
+      variables: variables.filter((v) => v.name.trim()),
+      lastModified: Date.now(),
+    });
     saveTreeMetadata();
-  }, [name, description, node.id, updateNode, saveTreeMetadata]);
+  }, [name, description, variables, node.id, updateNode, saveTreeMetadata]);
 
-  useAutosave(handleSave, [name, description], node.id);
+  useAutosave(handleSave, [name, description, variables], node.id);
 
   // Step mutation helpers — update local state and sync to store
   const commitSteps = useCallback(
@@ -358,7 +366,16 @@ export function PipelineEditor({ node }: { node: AuiNode }) {
         + Add Step
       </button>
 
-      {/* 4. Deploy */}
+      {/* 4. Variables */}
+      <div style={sectionHeaderStyle}>
+        Variables ({variables.filter((v) => v.name.trim()).length})
+      </div>
+      <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
+        API keys, passwords, and config values passed to each step in this pipeline.
+      </div>
+      <VariableEditor variables={variables} onChange={setVariables} accentColor={ACCENT} />
+
+      {/* 5. Deploy */}
       <div style={sectionHeaderStyle}>Deploy</div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>

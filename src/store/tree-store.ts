@@ -201,7 +201,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
             lastModified: Date.now(),
             validationErrors: [],
             assignedSkills: g.assignedSkills ?? [],
-            variables: g.variables ?? [],
+            variables: (g.variables ?? []).map((v: any) => ({ ...v, type: v.type ?? "text" })),
             launchPrompt: g.launchPrompt ?? "",
             pipelineSteps: g.pipelineSteps ?? [],
           });
@@ -575,6 +575,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       const globalSkillNames = (rootNode?.assignedSkills ?? [])
         .map((sid) => resolveSkillName(sid))
         .filter((n): n is string => n !== null);
+      const globalVars = (rootNode?.variables ?? []).filter((v: any) => v.name?.trim());
+      const pipelineVars = pipeline.variables.filter((v) => v.name.trim());
 
       // Sibling teams
       const siblingTeams: string[] = [];
@@ -600,6 +602,9 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         const skillContent = await readSkillFile(`${teamSlug}-${agentSlug}`);
         let block = `\n### Agent: ${agent.name} (slug: "${agentSlug}")\n`;
         if (agent.promptBody) block += `Role: ${agent.promptBody}\n`;
+        if (agent.variables.length > 0) {
+          block += `Variables:\n${agent.variables.map((v) => `  - [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}\n`;
+        }
         if (skillContent) {
           block += `\n<skill-file name="${teamSlug}-${agentSlug}">\n${skillContent}\n</skill-file>\n`;
         }
@@ -623,10 +628,13 @@ This is step ${i + 1} of ${pipeline.pipelineSteps.length} in pipeline "${pipelin
 ${rootDesc ? `- **Description:** ${rootDesc}` : ""}
 ${globalSkillNames.length > 0 ? `- **Global Skills:** ${globalSkillNames.join(", ")}` : ""}
 ${siblingTeams.length > 0 ? `- **Other Teams:** ${siblingTeams.join(", ")}` : ""}
+${globalVars.length > 0 ? `\n### Global Variables\n${globalVars.map((v: any) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
+${pipelineVars.length > 0 ? `\n### Pipeline Variables\n${pipelineVars.map((v) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
 
 ## Team: ${teamNode.name}
 ${teamNode.promptBody || "(no description)"}
 ${teamSkillBlocks.length > 0 ? `\n### Team Skills\n${teamSkillBlocks.join("\n")}` : ""}
+${teamNode.variables.length > 0 ? `\n### Team Variables\n${teamNode.variables.map((v) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
 
 ## Your Manager Skill File
 ${managerSkillContent ? `<skill-file name="${teamSlug}-manager">\n${managerSkillContent}\n</skill-file>` : "(no manager skill file found)"}
@@ -966,7 +974,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       if (agent.variables.length > 0) {
         block += `\n**Environment Variables:**\n`;
         for (const v of agent.variables) {
-          block += `- \`${v.name}\`: ${v.value ? `\`${v.value}\`` : "(to be provided)"}\n`;
+          block += `- [${v.type ?? "text"}] \`${v.name}\`: ${v.value ? `\`${v.value}\`` : "(to be provided)"}\n`;
         }
       }
 
@@ -1042,9 +1050,9 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
     if (team.variables.length > 0) {
       content += `## Team Variables\n\n`;
       content += `These environment variables are available to the team:\n\n`;
-      content += `| Variable | Value |\n|----------|-------|\n`;
+      content += `| Type | Variable | Value |\n|------|----------|-------|\n`;
       for (const v of team.variables) {
-        content += `| \`${v.name}\` | ${v.value ? `\`${v.value}\`` : "*(to be provided)*"} |\n`;
+        content += `| ${v.type ?? "text"} | \`${v.name}\` | ${v.value ? `\`${v.value}\`` : "*(to be provided)*"} |\n`;
       }
       content += "\n";
     }
@@ -1078,7 +1086,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       content += `   - **${agent.name}** (\`name: "${agentSlug}"\`, \`subagent_type: "general-purpose"\`)`;
       if (agent.promptBody) content += `\n     Role: ${agent.promptBody}`;
       if (skillNames.length > 0) content += `\n     Skills: ${skillNames.join(", ")}`;
-      if (agent.variables.length > 0) content += `\n     Variables: ${agent.variables.map((v) => `${v.name}=${v.value || "..."}`).join(", ")}`;
+      if (agent.variables.length > 0) content += `\n     Variables: ${agent.variables.map((v) => `[${v.type ?? "text"}] ${v.name}=${v.value || "..."}`).join(", ")}`;
       content += "\n";
     }
     content += `3. **Create tasks** — Break the user's request into discrete tasks using \`TaskCreate\` and assign to agents using \`TaskUpdate\` with the \`owner\` parameter\n`;
@@ -1229,7 +1237,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
     if (team.variables.length > 0) {
       managerContent += `## Team Configuration\n\n`;
       for (const v of team.variables) {
-        managerContent += `- **${v.name}**: ${v.value || "(to be provided at runtime)"}\n`;
+        managerContent += `- [${v.type ?? "text"}] **${v.name}**: ${v.value || "(to be provided at runtime)"}\n`;
       }
       managerContent += "\n";
     }
@@ -1355,7 +1363,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         agentContent += `## Configuration\n\n`;
         agentContent += `These variables define your operating parameters:\n\n`;
         for (const v of agent.variables) {
-          agentContent += `- **${v.name}**: ${v.value || "(to be provided at runtime)"}\n`;
+          agentContent += `- [${v.type ?? "text"}] **${v.name}**: ${v.value || "(to be provided at runtime)"}\n`;
         }
         agentContent += "\n";
       }

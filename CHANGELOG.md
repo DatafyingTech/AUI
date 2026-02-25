@@ -1,5 +1,32 @@
 # ATM (Agent Team Manager) — Changelog
 
+## v0.6.0 — February 25, 2026
+
+### New Feature: Typed Variables with Sensitive Masking
+- **Variable types** — variables now have a type: Text, API Key, Password, or Note. Each type has distinct visual styling with color-coded left borders (orange for API keys, red for passwords, purple for notes)
+- **Sensitive value masking** — API Key and Password variables are masked by default with `****` display. An eye toggle button reveals the actual value — identical UX to the API key field in Settings
+- **Note variables** — a new "Note" type renders as a multi-line textarea instead of a single-line input, perfect for context, instructions, or documentation
+- **Shared VariableEditor component** — all editors (Team, Agent, Pipeline, Root) now use a unified variable editing component with consistent behavior
+- **Quick-add buttons** — instead of a generic "+ Add Variable", there are now four buttons: `+ Text`, `+ API Key`, `+ Password`, `+ Note` for fast type-specific creation
+
+### New Feature: Variables on Pipeline and Root Nodes
+- **Pipeline variables** — Project Manager nodes now have a Variables section between Steps and Deploy. Variables are included in every step's deployment primer
+- **Global variables** — the root "You" node now has a "Global Variables" section. These variables are passed to every team and pipeline during deployment, making them ideal for org-wide API keys, endpoints, or config
+- **Deploy primer enrichment** — all primers (team deploy, pipeline deploy, skill exports) now include typed variable annotations like `[api-key] OPENAI_KEY: sk-...` for clarity
+
+### New Feature: Version Display in Settings
+- **Settings panel now shows the current ATM version** (e.g., "ATM v0.6.0") at the top of the panel, so users always know which version they're running
+
+### Technical
+- New `VariableKind` type: `"text" | "api-key" | "password" | "note"`
+- `NodeVariable` interface now has a `type: VariableKind` field
+- New shared component: `src/components/inspector/VariableEditor.tsx`
+- Backwards-compatible migration: old variables without a `type` field default to `"text"` on load
+- All primer generation (team, pipeline, skill export) updated to include variable types
+- SettingsPanel shows version info badge
+
+---
+
 ## v0.5.1 — February 25, 2026
 
 ### New Features

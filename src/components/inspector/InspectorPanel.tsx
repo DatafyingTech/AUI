@@ -11,7 +11,8 @@ import { useAutosave } from "@/hooks/useAutosave";
 import { scanAllSkills, type SkillInfo } from "@/services/skill-scanner";
 import { getApiKey, generateText } from "@/services/claude-api";
 import { toast } from "@/components/common/Toast";
-import type { NodeKind, AuiNode } from "@/types/aui-node";
+import type { NodeKind, AuiNode, NodeVariable } from "@/types/aui-node";
+import { VariableEditor } from "./VariableEditor";
 
 const kindColors: Record<NodeKind, string> = {
   human: "#d29922",
@@ -327,6 +328,7 @@ function RootEditor({ node }: { node: AuiNode }) {
 
   const [ownerName, setOwnerName] = useState(node.name);
   const [description, setDescription] = useState(node.promptBody);
+  const [variables, setVariables] = useState<NodeVariable[]>(node.variables);
   const [addSkillId, setAddSkillId] = useState("");
   const [teamCount, setTeamCount] = useState(3);
   const [agentsPer, setAgentsPer] = useState(3);
@@ -338,7 +340,8 @@ function RootEditor({ node }: { node: AuiNode }) {
   useEffect(() => {
     setOwnerName(node.name);
     setDescription(node.promptBody);
-  }, [node.id, node.name, node.promptBody]);
+    setVariables(node.variables);
+  }, [node.id, node.name, node.promptBody, node.variables]);
 
   useEffect(() => {
     if (!projectPath) return;
@@ -477,12 +480,17 @@ IMPORTANT: The JSON must contain exactly ${teamCount} objects in the "teams" arr
   }, [projectPath, description, teamCount, agentsPer, node.assignedSkills, nodes]);
 
   const handleSave = useCallback(() => {
-    updateNode(node.id, { name: ownerName, promptBody: description, lastModified: Date.now() });
+    updateNode(node.id, {
+      name: ownerName,
+      promptBody: description,
+      variables: variables.filter((v) => v.name.trim()),
+      lastModified: Date.now(),
+    });
     saveTreeMetadata();
-  }, [ownerName, description, node.id, updateNode, saveTreeMetadata]);
+  }, [ownerName, description, variables, node.id, updateNode, saveTreeMetadata]);
 
   // Autosave on changes
-  useAutosave(handleSave, [ownerName, description], node.id);
+  useAutosave(handleSave, [ownerName, description, variables], node.id);
 
   const handleAddSkill = () => {
     if (!addSkillId) return;
@@ -593,6 +601,14 @@ IMPORTANT: The JSON must contain exactly ${teamCount} objects in the "teams" arr
             Add
           </button>
         </div>
+      </CollapsibleSection>
+
+      {/* Global Variables — collapsible */}
+      <CollapsibleSection title="Global Variables" count={variables.filter((v) => v.name.trim()).length} defaultOpen={variables.length > 0}>
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
+          API keys, passwords, and config values shared with every team during deployment.
+        </div>
+        <VariableEditor variables={variables} onChange={setVariables} accentColor="#d29922" />
       </CollapsibleSection>
 
       {/* Teams — collapsible */}

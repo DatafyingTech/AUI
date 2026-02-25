@@ -8,7 +8,8 @@ import { scanAllSkills, type SkillInfo } from "@/services/skill-scanner";
 import { getApiKey, generateText } from "@/services/claude-api";
 import { toast } from "@/components/common/Toast";
 import { join } from "@/utils/paths";
-import type { AuiNode } from "@/types/aui-node";
+import type { AuiNode, NodeVariable } from "@/types/aui-node";
+import { VariableEditor } from "./VariableEditor";
 
 const labelStyle: CSSProperties = {
   fontSize: 12,
@@ -382,6 +383,7 @@ Make names descriptive and specific. Use title case.`;
     const globalSkillNames = (rootNode?.assignedSkills ?? [])
       .map((sid) => resolveSkillName(sid))
       .filter((n): n is string => n !== null);
+    const globalVars = (rootNode?.variables ?? []).filter((v) => v.name.trim());
 
     // Sibling teams for context
     const siblingTeams: string[] = [];
@@ -403,7 +405,7 @@ Make names descriptive and specific. Use title case.`;
       let block = `\n### Agent: ${agent.name} (slug: "${agentSlug}")\n`;
       if (agent.promptBody) block += `Role: ${agent.promptBody}\n`;
       if (agent.variables.length > 0) {
-        block += `Variables: ${agent.variables.map((v) => `${v.name}=${v.value || "..."}`).join(", ")}\n`;
+        block += `Variables:\n${agent.variables.map((v) => `  - [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}\n`;
       }
 
       if (skillContent) {
@@ -427,10 +429,11 @@ Make names descriptive and specific. Use title case.`;
 ${rootDesc ? `- **Description:** ${rootDesc}` : ""}
 ${globalSkillNames.length > 0 ? `- **Global Skills:** ${globalSkillNames.join(", ")}` : ""}
 ${siblingTeams.length > 0 ? `- **Other Teams:** ${siblingTeams.join(", ")}` : ""}
+${globalVars.length > 0 ? `\n### Global Variables\n${globalVars.map((v) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
 
 ## Team: ${node.name}
 ${node.promptBody || "(no description)"}
-${node.variables.length > 0 ? `\n### Team Variables\n${node.variables.map((v) => `- ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
+${node.variables.length > 0 ? `\n### Team Variables\n${node.variables.map((v) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
 ${teamSkillBlocks.length > 0 ? `\n### Team Skills\n${teamSkillBlocks.join("\n")}` : ""}
 
 ## Your Manager Skill File
@@ -890,67 +893,10 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         <div style={{ ...labelStyle, marginTop: 16, marginBottom: 8 }}>Variables</div>
 
         <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
-          Key-value pairs (API keys, URLs, etc.) available to this {isMember ? "agent" : "team"}.
+          API keys, passwords, notes, and config values available to this {isMember ? "agent" : "team"}.
         </div>
 
-        {variables.map((v, i) => (
-          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
-            <input
-              style={{ ...inputStyle, flex: 1 }}
-              placeholder="Name"
-              value={v.name}
-              onChange={(e) => {
-                const next = [...variables];
-                next[i] = { ...next[i], name: e.target.value };
-                setVariables(next);
-              }}
-            />
-            <input
-              style={{ ...inputStyle, flex: 2 }}
-              placeholder="Value"
-              value={v.value}
-              onChange={(e) => {
-                const next = [...variables];
-                next[i] = { ...next[i], value: e.target.value };
-                setVariables(next);
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setVariables(variables.filter((_, j) => j !== i))}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--text-secondary)",
-                cursor: "pointer",
-                padding: "0 4px",
-                fontSize: 14,
-                lineHeight: 1,
-                flexShrink: 0,
-              }}
-              title="Remove variable"
-            >
-              x
-            </button>
-          </div>
-        ))}
-
-        <button
-          onClick={() => setVariables([...variables, { name: "", value: "" }])}
-          style={{
-            width: "100%",
-            padding: "6px 12px",
-            background: "transparent",
-            color: "var(--accent-purple)",
-            border: "1px dashed var(--accent-purple)",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: 11,
-            fontWeight: 600,
-          }}
-        >
-          + Add Variable
-        </button>
+        <VariableEditor variables={variables} onChange={setVariables} />
       </CollapsibleSection>
 
       {/* 4. Agents — collapsible, includes Generate with AI controls */}

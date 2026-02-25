@@ -10,9 +10,12 @@ export interface PipelineStep {
   prompt: string;      // deploy prompt for this step
 }
 
+export type VariableKind = "text" | "api-key" | "password" | "note";
+
 export interface NodeVariable {
   name: string;
   value: string;
+  type: VariableKind;
 }
 
 export interface AuiNode {

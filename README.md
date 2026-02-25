@@ -6,18 +6,89 @@
 
 # ATM -- Agent Team Manager
 
-**The org chart for your AI workforce.**
+**Stop writing prompts. Start managing teams.**
 
-ATM is a desktop app that lets you build, manage, and deploy teams of AI employees -- visually. Design your org structure on a drag-and-drop canvas, create detailed skill trees that define what each employee can do, set recurring work schedules, chain teams into sequential pipelines, and send entire teams to work with a single click. Think of it as the HR dashboard for your AI company.
+ATM is a desktop application that turns hours of manual Claude Code configuration into a visual, repeatable workflow. Design AI teams on a drag-and-drop org chart, assign typed variables with sensitive value masking, chain teams into multi-step pipelines, and deploy entire departments to work -- all without writing a single line of YAML, JSON, or markdown by hand.
 
-## Why ATM?
+If you have ever spent 30 minutes hand-crafting a deployment prompt, manually wiring agent configs, or copy-pasting API keys across a dozen files, ATM eliminates all of that.
 
-- **Design teams visually** -- map out your AI workforce on an interactive org chart. Drag employees between teams, collapse departments, and see your entire operation at a glance
-- **Create detailed skill trees** -- define exactly what each AI employee can do with structured skill files. ATM auto-generates comprehensive skill profiles including context, tools, permissions, and coordination rules
-- **Project Manager pipelines** -- chain multiple teams into sequential workflows. Team 1 finishes, team 2 starts, team 3 follows. Each step gets its own objective. Play all steps with one click or schedule the whole pipeline
-- **Set employee schedules** -- attach recurring schedules to any team or pipeline using real OS-level task scheduling. Your AI employees show up for work on time, every time -- even when ATM is closed
-- **Deploy with one click** -- write a brief, ATM generates a full deployment primer with company context, skill files, variables, and team structure, then launches your crew in an external terminal
-- **Zero lock-in** -- ATM reads and writes standard Claude Code config files. Stop using it anytime and everything still works
+---
+
+## What ATM Replaces
+
+| Without ATM | With ATM |
+|-------------|----------|
+| Hand-write agent `.md` files with YAML frontmatter | Visual editor with auto-save |
+| Copy-paste API keys into every config | Typed variables cascade from root to team to agent automatically |
+| Manually compose 2000-word deployment primers | One click generates a comprehensive primer with full context |
+| No way to run Team A then Team B then Team C | Pipeline editor chains teams into sequential workflows |
+| Set up cron jobs or Task Scheduler by hand | Built-in scheduler with repeat options and visual job list |
+| Start from scratch every time | Save, name, and switch between multiple org layouts |
+| Describe your org in text and hope Claude understands | Visual org chart that maps directly to Claude Code team structure |
+
+---
+
+## Key Features
+
+### Typed Variables with Sensitive Value Masking (NEW in v0.6.0)
+
+Define variables at any level of your org -- root, team, or agent -- and they cascade downward automatically. Each variable has a **type** (API Key, Password, Note, or Text) and sensitive values are masked by default with an eye toggle to reveal them. When ATM generates a deployment primer, all variables are resolved and included in the briefing so your agents have every credential and config value they need without you pasting anything manually.
+
+### Project Manager Pipelines
+
+Chain multiple teams into ordered workflows. A Project Manager node lets you define sequential steps -- Team 1 runs to completion, then Team 2 starts, then Team 3 follows. Each step has its own deployment objective. Hit **Play All** to execute the entire pipeline in a single terminal session, or **Schedule** it to run on a recurring basis. The same team can appear in multiple steps with different objectives.
+
+### Visual Org Chart
+
+Design your AI workforce on a full pan/zoom/drag canvas. Nodes are color-coded by role -- gold for You (the CEO), blue for Teams, orange for Agents, light blue for Sub-Agents, magenta for Project Managers, and green for Skills. Collapse and expand entire departments. Right-click any node for a context menu with **Move to...** reparenting that lists every valid target. Hover over connection lines to insert new nodes between existing pairs. The org chart is not decoration -- it directly defines the team structure that gets deployed.
+
+### One-Click Deploy
+
+Write a short objective, click Deploy. ATM handles everything else:
+
+1. Generates any missing skill files (existing ones are preserved)
+2. Builds a comprehensive deployment primer -- company context, team overview, all skill file contents, resolved variables, coordination rules
+3. Opens an external terminal and launches Claude CLI with the full primer already submitted
+
+No prompt engineering. No copy-pasting. No context window anxiety. The primer is also saved to `.aui/deploy-primer.md` so you can review or reuse it.
+
+### Real Scheduling
+
+Attach recurring schedules to any team or pipeline using actual OS-level task scheduling -- Windows Task Scheduler on Windows, crontab on macOS/Linux. Choose from Once, Hourly, Daily, Weekly, or custom cron expressions. Your AI teams run on schedule even when ATM is closed. Every execution opens a fresh terminal with a full deployment primer.
+
+### AI-Powered Team Generation
+
+Describe your company or project goals, specify how many teams and agents you want, and ATM generates the entire org structure -- complete with names, roles, and descriptions tailored to your objectives. Generate descriptions individually, batch-generate across multi-selected nodes, or let ATM build your whole workforce from a single paragraph.
+
+### Multiple Layouts
+
+Save your current org as a named layout, create blank canvases, and switch between configurations instantly. Each layout preserves the full tree hierarchy, group metadata, node positions, and variables independently. Rename or delete layouts from the toolbar dropdown. Build a "Production" layout and a "Testing" layout and flip between them in one click.
+
+### Zero Lock-In
+
+ATM reads and writes standard Claude Code config files (`.claude/agents/*.md`, `.claude/skills/*/SKILL.md`, `.claude/settings.json`). Every agent, skill, and setting ATM creates is a normal file on disk. Stop using ATM tomorrow and everything still works exactly as it did before.
+
+---
+
+## How It Works
+
+ATM follows a four-step workflow:
+
+### 1. Design
+
+Build your org chart on the canvas. Create teams, drag agents between departments, assign skills. Use AI generation to scaffold entire structures from a description, or build node by node.
+
+### 2. Configure
+
+Click any node to open its profile in the inspector. Set descriptions, assign variables (API keys, credentials, configuration values), attach skills, choose models and permissions. Variables defined at the root cascade to every team and agent below -- set an API key once and every agent inherits it.
+
+### 3. Deploy
+
+Write a brief objective and click Deploy. ATM compiles everything -- your org structure, every skill file, all resolved variables, coordination rules, and your objective -- into a single deployment primer. It opens an external terminal and launches Claude with the full briefing. For multi-step workflows, use a Project Manager pipeline to chain teams sequentially.
+
+### 4. Claude Does the Work
+
+Claude receives a comprehensive briefing with complete context about your company, every team member's skills, all necessary credentials, and clear objectives. No token waste on back-and-forth clarification. No missing context. Your AI workforce executes with the full picture from the first message.
 
 ---
 
@@ -44,90 +115,20 @@ ATM is a desktop app that lets you build, manage, and deploy teams of AI employe
 
 ---
 
-## Features
+## At a Glance
 
-### Visual Org Chart
-
-Design your AI workforce on a full pan/zoom/drag canvas powered by React Flow. Employees are color-coded by role:
-
-| Role | Color | Badge |
-|------|-------|-------|
-| You (CEO) | Gold | YOU |
-| Team | Blue | TEAM |
-| Employee | Orange | EMPLOYEE |
-| Sub-Employee | Light Blue | SUB-EMPLOYEE |
-| Project Manager | Magenta | PROJECT MGR |
-| Skill | Green | SKILL |
-
-Drag employees between teams to reorganize. Collapse or expand entire departments to manage complexity. Hover over any employee to reveal quick actions, right-click for a context menu, or hover over connection lines to insert new employees between existing pairs. Save multiple named layouts and switch between them instantly. Start fresh anytime with the blank layout option.
-
-### Skill Trees
-
-Every AI employee needs to know what they're good at. ATM lets you create and assign detailed skill files (`SKILL.md`) that define each employee's expertise. When you deploy a team, ATM auto-generates comprehensive skill profiles that include:
-
-- Company and team context
-- Global and team-scoped skills with inline content
-- Variables tables for API keys, URLs, and runtime configs
-- Detailed employee profiles (model, tools, permissions, sub-employees)
-- Coordination rules and deployment instructions
-
-### AI-Powered Hiring
-
-Describe your company or project, specify how many teams and employees you want, and ATM generates the perfect org structure -- complete with team names, employee roles, and descriptions. You can also:
-
-- **Generate descriptions** for individual employees with one click
-- **Batch-generate** by multi-selecting employees (Ctrl+click) and generating all descriptions at once
-- **Fine-tune counts** -- specify exact team and employee counts and ATM delivers precisely what you asked for
-
-### One-Click Deploy
-
-Send an entire team to work directly from the canvas:
-
-1. Write a deploy prompt describing what the team should accomplish
-2. ATM generates any missing skill files (existing ones are preserved)
-3. A comprehensive briefing is built -- company context, team overview, all skill file contents, variables, and coordination rules
-4. An external terminal opens and launches Claude CLI with the full briefing
-
-The briefing is also saved to `.aui/deploy-primer.md` for reference.
-
-### Project Manager (Pipeline)
-
-Chain multiple teams into a sequential workflow where each step runs to completion before the next begins:
-
-1. Create a Project Manager node from the canvas context menu or create dialog
-2. Add steps in the inspector -- each step picks a team and sets a deployment prompt
-3. Reorder, duplicate, or remove steps as needed -- the same team can appear multiple times with different objectives
-4. Click **Play All** to run the entire pipeline in one terminal session (step 1 finishes, step 2 starts, etc.)
-5. Or click **Schedule** to set up a recurring pipeline run via OS-level task scheduling
-
-Each step generates its own deployment primer with full team context. The deploy script runs each Claude session sequentially, ensuring orderly execution.
-
-### Employee Schedules
-
-Set up recurring work schedules using real OS-level task scheduling -- Windows Task Scheduler on Windows, crontab on macOS/Linux. Your AI employees show up for work on time, every time, even when ATM is closed.
-
-- **Flexible timing** -- once, hourly, daily, weekly, or custom cron expressions
-- **Team selector** -- pick any team from your canvas to schedule
-- **Visual job list** -- see all scheduled runs with toggle and delete controls
-- **Fresh briefing per run** -- each execution opens a new terminal with the full deployment primer
-- **Persistent** -- schedules survive app restarts
-
-### Employee Profiles
-
-Click any employee to open their full profile in the side inspector. All changes auto-save after a brief pause, so you never lose edits when clicking away.
-
-- **Model selection** -- choose which Claude model each employee uses
-- **Tools and permissions** -- configure what each employee can access
-- **Descriptions** -- write manually or generate with AI
-- **Variables** -- key-value pairs for API keys, URLs, and runtime configs
-- **Skills** -- attach and manage skill files per employee
-
-### Settings and Data
-
-- Claude API key management (show/hide toggle)
-- Color pickers for team, employee, and accent colors
-- Auto-save toggle with live CSS theming
-- **Export/Import** -- save your entire org to a JSON file or import a previously exported tree to restore or share configurations
+| Capability | Details |
+|------------|---------|
+| **Typed Variables** | API Key, Password, Note, Text types with sensitive value masking and root-to-agent inheritance |
+| **Pipelines** | Chain teams into sequential multi-step workflows with per-step objectives |
+| **Org Chart** | Drag-and-drop canvas with collapse/expand, context menu reparenting, edge insert |
+| **Deploy** | One-click primer generation + external terminal launch |
+| **Scheduling** | OS-level task scheduling (Task Scheduler / cron) with repeat options |
+| **AI Generation** | Generate full org structures, descriptions, and skill files from natural language |
+| **Layouts** | Save, switch, rename multiple named org configurations |
+| **Autosave** | All editors save automatically after 800ms of idle typing |
+| **Zero Lock-In** | Standard Claude Code config files -- no proprietary formats |
+| **Export/Import** | Save your entire org to JSON, import it on another machine |
 
 ---
 
@@ -135,7 +136,7 @@ Click any employee to open their full profile in the side inspector. All changes
 
 ### Download (Recommended)
 
-**[Download ATM for Windows](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.exe` installer and you're running in seconds.
+**[Download ATM v0.6.0 for Windows](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.exe` installer and you are running in seconds.
 
 > macOS and Linux installers coming soon. For now, build from source below.
 
@@ -242,8 +243,9 @@ ATM stores its configuration in a `.aui/` directory at the project root:
 | `.aui/deploy-primer.md` | Last generated deploy primer |
 | `.aui/schedules.json` | Scheduled job definitions |
 | `.aui/schedules/` | Generated deploy scripts for scheduled runs |
+| `.aui/layouts/` | Named layout files with `index.json` manifest |
 
-Set your Claude API key in the Settings panel to enable AI-powered features.
+Set your Claude API key in the Settings panel to enable AI-powered features (team generation, description generation, skill file generation). Deployed team sessions run on your own Claude subscription -- ATM only uses the API for generation features.
 
 ---
 
@@ -281,4 +283,4 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-If ATM helps you manage your AI workforce, consider giving it a star -- it helps others discover the project.
+If ATM saves you time managing your AI workforce, consider giving it a star -- it helps others discover the project.

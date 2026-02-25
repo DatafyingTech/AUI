@@ -165,6 +165,25 @@ export function SettingsPanel() {
           </div>
         ) : (
           <>
+            {/* Version Info */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 12px",
+                background: "rgba(74,158,255,0.06)",
+                border: "1px solid var(--border-color)",
+                borderRadius: 6,
+                marginBottom: 16,
+              }}
+            >
+              <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Version</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                ATM v0.6.0
+              </span>
+            </div>
+
             {/* API Key */}
             <div style={sectionStyle}>Claude API</div>
             <div style={{ marginBottom: 16 }}>
