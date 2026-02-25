@@ -21,6 +21,16 @@ Every token your Claude Code agents spend orienting, discovering context, or fig
 ---
 
 ## Screenshots
+**Example 1: Cypto Investment firm**
+
+<img width="506" height="682" alt="1" src="https://github.com/user-attachments/assets/522461e4-9833-43d6-92e5-d19e96bed3ea" />
+<img width="1858" height="695" alt="2" src="https://github.com/user-attachments/assets/80f670af-89fe-40ed-b8ae-09b42856fafa" />
+<img width="796" height="445" alt="3" src="https://github.com/user-attachments/assets/2f5274c4-59c3-4ffa-af8c-730a872f2cf3" />
+<img width="1908" height="1000" alt="4" src="https://github.com/user-attachments/assets/1e8731f2-d03a-45a1-a74b-ca5b92e7f6ac" />
+<img width="410" height="624" alt="5" src="https://github.com/user-attachments/assets/4db58ca9-29cd-4978-92db-cf557249a146" />
+---
+**Example 2: IT Security/SOC team**
+
 <img width="1914" height="1000" alt="Screenshot 2026-02-24 125817" src="https://github.com/user-attachments/assets/6086b73d-632a-4381-8277-d87328460009" />
 <img width="1913" height="1002" alt="223121" src="https://github.com/user-attachments/assets/a08f368e-84fc-498d-8be3-02135d0526d3" />
 <img width="1909" height="997" alt="3 3131" src="https://github.com/user-attachments/assets/d2d61d82-db38-4dfa-9dc6-e7769aa489f7" />
