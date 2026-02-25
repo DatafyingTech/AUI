@@ -1,6 +1,6 @@
 [package]
 name = "atm"
-version = "0.5.0"
+version = "0.5.1"
 description = "ATM — Agent Team Manager for Claude Code"
 authors = ["Kevin"]
 license = "MIT"

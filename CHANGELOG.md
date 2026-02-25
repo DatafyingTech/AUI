@@ -1,5 +1,16 @@
 # ATM (Agent Team Manager) — Changelog
 
+## v0.5.1 — February 25, 2026
+
+### New Features
+- **"Move to..." context menu** — right-click any node on the canvas to see a "Move to..." submenu listing all valid parent targets (Root, teams, and pipelines). Quickly reparent nodes without drag-and-drop. Excludes the node's current parent and its own descendants to prevent circular hierarchies
+
+### Technical
+- Added submenu support to `ContextMenu` component — items with a `children` array render as hover-expandable submenus with smooth open/close transitions
+- Context menu "Move to Root" replaced with dynamic "Move to..." submenu that lists all groups and pipelines as reparenting targets
+
+---
+
 ## v0.5.0 — February 25, 2026
 
 ### Rebrand: AUI → ATM (Agent Team Manager)

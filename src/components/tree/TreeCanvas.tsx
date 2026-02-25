@@ -400,6 +400,34 @@ export function TreeCanvas() {
       }));
     }
 
+    // Build "Move to..." submenu targets
+    const currentNode = treeNodes.get(nodeId);
+    const descendantIds = new Set(getDescendantIds(nodeId));
+    const moveTargets: { label: string; onClick: () => void }[] = [];
+
+    // Always offer "Root" first if not already at root
+    if (currentNode?.parentId !== "root") {
+      moveTargets.push({
+        label: "Root",
+        onClick: () => reparentNode(nodeId, "root"),
+      });
+    }
+
+    // Add all groups and pipelines as targets (excluding self, descendants, current parent)
+    for (const [id, node] of treeNodes) {
+      if (id === nodeId) continue;
+      if (id === "root") continue;
+      if (id === currentNode?.parentId) continue;
+      if (descendantIds.has(id)) continue;
+      if (node.kind === "group" || node.kind === "pipeline") {
+        const prefix = node.kind === "pipeline" ? "[Pipeline] " : "";
+        moveTargets.push({
+          label: `${prefix}${node.name}`,
+          onClick: () => reparentNode(nodeId, id),
+        });
+      }
+    }
+
     // Node context menu
     return [
       {
@@ -414,10 +442,15 @@ export function TreeCanvas() {
         label: "Add Child Node",
         onClick: () => useUiStore.getState().openCreateDialog(nodeId),
       },
-      {
-        label: "Move to Root",
-        onClick: () => reparentNode(nodeId, "root"),
-      },
+      ...(moveTargets.length > 0
+        ? [
+            {
+              label: "Move to...",
+              onClick: () => {},
+              children: moveTargets,
+            },
+          ]
+        : []),
       { label: "", onClick: () => {}, divider: true },
       {
         label: "Remove from Canvas",
@@ -428,7 +461,7 @@ export function TreeCanvas() {
         },
       },
     ];
-  }, [contextMenu, selectNode, toggleInspector, reparentNode]);
+  }, [contextMenu, selectNode, toggleInspector, reparentNode, treeNodes, getDescendantIds]);
 
   // Auto-select root node when welcome screen is showing so inspector opens immediately
   const showWelcomeEarly = !loading && !error && treeNodes.size <= 1;
