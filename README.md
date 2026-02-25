@@ -28,6 +28,7 @@ Every token your Claude Code agents spend orienting, discovering context, or fig
 <img width="796" height="445" alt="3" src="https://github.com/user-attachments/assets/2f5274c4-59c3-4ffa-af8c-730a872f2cf3" />
 <img width="1908" height="1000" alt="4" src="https://github.com/user-attachments/assets/1e8731f2-d03a-45a1-a74b-ca5b92e7f6ac" />
 <img width="410" height="624" alt="5" src="https://github.com/user-attachments/assets/4db58ca9-29cd-4978-92db-cf557249a146" />
+<img width="1099" height="631" alt="6" src="https://github.com/user-attachments/assets/877d9b7d-1abc-4c96-8654-e30ca8994c6a" />
 
 ---
 **Example 2: IT Security/SOC team**
