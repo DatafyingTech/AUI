@@ -16,10 +16,10 @@ import type { AuiNode } from "@/types/aui-node";
 
 const panelStyle: CSSProperties = {
   position: "fixed",
-  top: 0,
+  top: "var(--toolbar-height)",
   right: 0,
   width: 420,
-  height: "100%",
+  height: "calc(100% - var(--toolbar-height))",
   background: "var(--bg-secondary)",
   borderLeft: "1px solid var(--border-color)",
   zIndex: 50,

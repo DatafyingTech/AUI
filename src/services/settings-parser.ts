@@ -1,8 +1,8 @@
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import type { AuiNode } from "../types/aui-node";
-import type { SettingsConfig } from "../types/settings";
-import { SettingsConfigSchema } from "../types/settings";
-import { getFileName, generateNodeId } from "../utils/paths";
+import type { AuiNode } from "@/types/aui-node";
+import type { SettingsConfig } from "@/types/settings";
+import { SettingsConfigSchema } from "@/types/settings";
+import { getFileName, generateNodeId } from "@/utils/paths";
 
 /**
  * Parse a settings JSON file into an AuiNode.

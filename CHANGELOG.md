@@ -1,5 +1,22 @@
 # AUI (Agent UI) — Changelog
 
+## v0.3.9 — February 24, 2026
+
+### QA & Polish
+- **Full QA audit** — comprehensive 6-area quality audit covering canvas nodes, inspector panel, layouts system, toolbar/navigation, schedule/settings, and data/build integrity. 82/83 checks passed
+- **SchedulePanel toolbar overlap fixed** — panel now uses `var(--toolbar-height)` for top offset, consistent with Settings and Catalog panels
+- **Consistent `@/` path aliases** — converted all remaining relative `../` imports in services and utilities to use the `@/` path alias for codebase consistency (agent-parser, file-scanner, file-watcher, file-writer, settings-parser, skill-parser, skill-scanner, validation)
+
+### Verified
+- Canvas: all 12 visual checks pass (badges, colors, tints, sub-agent detection, hover actions, collapse/expand, glow/shadow)
+- Inspector: all 11 editor checks pass (routing, deploy section, schedule button, sub-agent badges, save/discard, skills, variables)
+- Layouts: all 22 CRUD + edge-case checks pass (types, service, store, dropdown UI, rename, delete guards)
+- Toolbar: all 11 navigation checks pass (3-section layout, button order, panel mutual exclusivity, z-index)
+- Schedule: all 23 cron/schtasks/settings checks pass (Rust commands, repeat mapping, time formats, script generation, toggle/delete)
+- Data layer: all 13 store/type/build checks pass (interfaces match implementations, no circular imports, tsc + vite build clean)
+
+---
+
 ## v0.3.8 — February 24, 2026
 
 ### New Features

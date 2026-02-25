@@ -1,11 +1,11 @@
 import matter from "gray-matter";
 import { writeTextFile, rename, remove } from "@tauri-apps/plugin-fs";
-import type { AuiNode } from "../types/aui-node";
-import type { AgentConfig } from "../types/agent";
-import type { SettingsConfig } from "../types/settings";
-import { AgentConfigSchema } from "../types/agent";
-import { SkillConfigSchema } from "../types/skill";
-import { SettingsConfigSchema } from "../types/settings";
+import type { AuiNode } from "@/types/aui-node";
+import type { AgentConfig } from "@/types/agent";
+import type { SettingsConfig } from "@/types/settings";
+import { AgentConfigSchema } from "@/types/agent";
+import { SkillConfigSchema } from "@/types/skill";
+import { SettingsConfigSchema } from "@/types/settings";
 
 /**
  * Write an agent or skill AuiNode back to disk as Markdown with YAML frontmatter.

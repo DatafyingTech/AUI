@@ -1,5 +1,5 @@
 import { readDir, exists } from "@tauri-apps/plugin-fs";
-import { joinPath, normalizePath } from "../utils/paths";
+import { joinPath, normalizePath } from "@/utils/paths";
 
 /**
  * Scan a project root for Claude configuration files.

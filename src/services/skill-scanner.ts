@@ -1,6 +1,6 @@
 import { readDir, readTextFile, exists } from "@tauri-apps/plugin-fs";
 import matter from "gray-matter";
-import { join, titleCase, generateNodeId } from "../utils/paths";
+import { join, titleCase, generateNodeId } from "@/utils/paths";
 
 // ── Public types ─────────────────────────────────────────
 

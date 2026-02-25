@@ -1,10 +1,10 @@
-import type { AuiNode } from "../types/aui-node";
-import type { AgentConfig } from "../types/agent";
-import type { SkillConfig } from "../types/skill";
-import type { SettingsConfig } from "../types/settings";
-import { AgentConfigSchema } from "../types/agent";
-import { SkillConfigSchema } from "../types/skill";
-import { SettingsConfigSchema } from "../types/settings";
+import type { AuiNode } from "@/types/aui-node";
+import type { AgentConfig } from "@/types/agent";
+import type { SkillConfig } from "@/types/skill";
+import type { SettingsConfig } from "@/types/settings";
+import { AgentConfigSchema } from "@/types/agent";
+import { SkillConfigSchema } from "@/types/skill";
+import { SettingsConfigSchema } from "@/types/settings";
 
 export function validateNode(node: AuiNode): string[] {
   const errors: string[] = [];

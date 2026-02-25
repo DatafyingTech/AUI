@@ -1,9 +1,9 @@
 import matter from "gray-matter";
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import type { AuiNode } from "../types/aui-node";
-import type { AgentConfig } from "../types/agent";
-import { AgentConfigSchema } from "../types/agent";
-import { getFileName, titleCase, generateNodeId } from "../utils/paths";
+import type { AuiNode } from "@/types/aui-node";
+import type { AgentConfig } from "@/types/agent";
+import { AgentConfigSchema } from "@/types/agent";
+import { getFileName, titleCase, generateNodeId } from "@/utils/paths";
 
 /**
  * Parse a .md agent file into an AuiNode.

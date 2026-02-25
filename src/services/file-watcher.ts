@@ -1,5 +1,5 @@
 import { watch } from "@tauri-apps/plugin-fs";
-import { joinPath, normalizePath } from "../utils/paths";
+import { joinPath, normalizePath } from "@/utils/paths";
 
 /**
  * Watch the .claude/ directory for changes with debouncing.

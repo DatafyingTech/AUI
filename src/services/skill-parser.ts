@@ -1,9 +1,9 @@
 import matter from "gray-matter";
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import type { AuiNode } from "../types/aui-node";
-import type { SkillConfig } from "../types/skill";
-import { SkillConfigSchema } from "../types/skill";
-import { getFileName, titleCase, generateNodeId } from "../utils/paths";
+import type { AuiNode } from "@/types/aui-node";
+import type { SkillConfig } from "@/types/skill";
+import { SkillConfigSchema } from "@/types/skill";
+import { getFileName, titleCase, generateNodeId } from "@/utils/paths";
 
 /**
  * Parse a SKILL.md file into an AuiNode.

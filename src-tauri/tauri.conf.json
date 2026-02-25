@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "AUI",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "identifier": "com.aui.agent-ui",
   "build": {
     "frontendDist": "../dist",
