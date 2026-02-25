@@ -6,37 +6,23 @@
 
 # AUI -- Agent UI
 
-**Stop wasting tokens. Start deploying agents that hit the ground running.**
+**The org chart for your AI workforce.**
 
-Every token your Claude Code agents spend orienting, discovering context, or figuring out team structure is a token not spent on actual work. AUI is a desktop app that lets you design, prime, and deploy agent teams visually -- so every token goes toward output, not overhead.
+AUI is a desktop app that lets you build, manage, and deploy teams of AI employees -- visually. Design your org structure on a drag-and-drop canvas, create detailed skill trees that define what each employee can do, set recurring work schedules, and send entire teams to work with a single click. Think of it as the HR dashboard for your AI company.
 
 ## Why AUI?
 
-- **Get more from every token** -- organize context, skills, and team structures visually before deploying, so agents start working immediately instead of burning tokens on discovery and setup
-- **Deploy perfectly-primed teams** -- AUI generates a comprehensive primer with full company context, skill files, variables, and coordination rules, then launches your team in a single click
-- **Schedule recurring runs** -- attach cron expressions to any team and let the OS-level task scheduler handle the rest, no babysitting required
-- **Design your org visually** -- map out agent specializations, API connections, and team hierarchies on a drag-and-drop canvas powered by React Flow
-- **Zero lock-in** -- AUI reads and writes standard Claude Code config files; stop using it anytime and everything still works
-
----
-
-## At a Glance
-
-| | Feature | Description |
-|---|---|---|
-| **Canvas** | Drag-and-drop org chart | Pan, zoom, collapse teams, reparent with drag proximity |
-| **AI Teams** | Generate from description | Describe your goals, get a complete team structure instantly |
-| **Deploy** | One-click launch | Auto-generates primers with full context and opens Claude CLI |
-| **Schedule** | OS-level cron jobs | Set up recurring agent runs via Task Scheduler / crontab |
-| **Inspector** | Auto-saving editors | Edit agents, skills, variables, and descriptions in-place |
-| **Layouts** | Multiple named layouts | Save, switch, and rename different org structures |
-| **File Sync** | Real-time watcher | Edits made outside AUI sync to the canvas automatically |
-| **Portable** | Zero lock-in | Reads and writes standard Claude Code config files |
+- **Design teams visually** -- map out your AI workforce on an interactive org chart. Drag employees between teams, collapse departments, and see your entire operation at a glance
+- **Create detailed skill trees** -- define exactly what each AI employee can do with structured skill files. AUI auto-generates comprehensive skill profiles including context, tools, permissions, and coordination rules
+- **Set employee schedules** -- attach recurring schedules to any team using real OS-level task scheduling. Your AI employees show up for work on time, every time -- even when AUI is closed
+- **Deploy with one click** -- write a brief, AUI generates a full deployment primer with company context, skill files, variables, and team structure, then launches your crew in an external terminal
+- **Zero lock-in** -- AUI reads and writes standard Claude Code config files. Stop using it anytime and everything still works
 
 ---
 
 ## Screenshots
-**Example 1: Cypto Investment firm**
+
+**Example 1: Crypto Investment Firm**
 
 <img width="506" height="682" alt="1" src="https://github.com/user-attachments/assets/522461e4-9833-43d6-92e5-d19e96bed3ea" />
 <img width="1858" height="695" alt="2" src="https://github.com/user-attachments/assets/80f670af-89fe-40ed-b8ae-09b42856fafa" />
@@ -46,7 +32,8 @@ Every token your Claude Code agents spend orienting, discovering context, or fig
 <img width="1099" height="631" alt="6" src="https://github.com/user-attachments/assets/877d9b7d-1abc-4c96-8654-e30ca8994c6a" />
 
 ---
-**Example 2: IT Security/SOC team**
+
+**Example 2: IT Security / SOC Team**
 
 <img width="1914" height="1000" alt="Screenshot 2026-02-24 125817" src="https://github.com/user-attachments/assets/6086b73d-632a-4381-8277-d87328460009" />
 <img width="1913" height="1002" alt="223121" src="https://github.com/user-attachments/assets/a08f368e-84fc-498d-8be3-02135d0526d3" />
@@ -58,143 +45,90 @@ Every token your Claude Code agents spend orienting, discovering context, or fig
 
 ## Features
 
-### Interactive Org-Chart Canvas
+### Visual Org Chart
 
-A full pan/zoom/drag canvas powered by React Flow. Nodes are color-coded by type:
+Design your AI workforce on a full pan/zoom/drag canvas powered by React Flow. Employees are color-coded by role:
 
-| Node Type   | Color      | Badge     |
-|-------------|------------|-----------|
-| You (root)  | Gold       | YOU       |
-| Team        | Blue       | TEAM      |
-| Agent       | Orange     | AGENT     |
-| Sub-Agent   | Light Blue | SUB-AGENT |
-| Skill       | Green      | skill     |
+| Role | Color | Badge |
+|------|-------|-------|
+| You (CEO) | Gold | YOU |
+| Team | Blue | TEAM |
+| Employee | Orange | EMPLOYEE |
+| Sub-Employee | Light Blue | SUB-EMPLOYEE |
+| Skill | Green | SKILL |
 
-Build your agent hierarchy visually -- drag nodes, rearrange teams, and see the full structure at a glance. Sub-agents (agents nested under other agents) get a distinct lighter-blue treatment so you can instantly tell depth in the hierarchy. Team groups can be collapsed or expanded on the canvas to manage complexity. Hover over any node to reveal quick actions (add child node, remove from canvas), double-click to open the inspector, or right-click for a context menu with additional operations. Hover over any connection line between nodes to reveal a "+" button that lets you insert a new node between an existing parent-child pair. The Layouts dropdown includes a **blank layout** option that clears the canvas down to just the root "You" node, giving you a fresh starting point.
+Drag employees between teams to reorganize. Collapse or expand entire departments to manage complexity. Hover over any employee to reveal quick actions, right-click for a context menu, or hover over connection lines to insert new employees between existing pairs. Save multiple named layouts and switch between them instantly. Start fresh anytime with the blank layout option.
 
-### Inspector Panel
+### Skill Trees
 
-Click any node to open the side inspector. All editors auto-save your changes after a brief pause, so you never lose edits when clicking away -- manual save buttons remain as a fallback. Edit agent configurations in detail:
+Every AI employee needs to know what they're good at. AUI lets you create and assign detailed skill files (`SKILL.md`) that define each employee's expertise. When you deploy a team, AUI auto-generates comprehensive skill profiles that include:
 
-- **Model selection** -- choose which Claude model each agent uses
-- **Tools and permissions** -- configure what each agent can access
-- **Descriptions** -- manual or AI-generated summaries
-- **Variables** -- key-value pairs for API keys, URLs, and runtime configs
-- **Skills** -- attach and manage skill files per agent
+- Company and team context
+- Global and team-scoped skills with inline content
+- Variables tables for API keys, URLs, and runtime configs
+- Detailed employee profiles (model, tools, permissions, sub-employees)
+- Coordination rules and deployment instructions
 
-### AI-Powered Authoring
+### AI-Powered Hiring
 
-AUI connects to the Claude API (Haiku 4.5) to accelerate team building:
+Describe your company or project, specify how many teams and employees you want, and AUI generates the perfect org structure -- complete with team names, employee roles, and descriptions. You can also:
 
-- **Generate Description** -- auto-write contextual descriptions for any agent or team
-- **Auto-Fill Teams** -- specify team and agent counts, let Claude generate the full org structure with names and descriptions
-- **Smart Team Generation** -- describe your project goals and AUI creates purpose-built teams to meet them
-- **Batch Generation** -- multi-select nodes (Ctrl+click) and generate all descriptions in parallel
+- **Generate descriptions** for individual employees with one click
+- **Batch-generate** by multi-selecting employees (Ctrl+click) and generating all descriptions at once
+- **Fine-tune counts** -- specify exact team and employee counts and AUI delivers precisely what you asked for
 
 ### One-Click Deploy
 
-Deploy an entire team directly from the canvas:
+Send an entire team to work directly from the canvas:
 
 1. Write a deploy prompt describing what the team should accomplish
-2. AUI generates any missing skill files (preserving existing ones)
-3. A comprehensive primer is built -- including company context, team overview, all skill file contents, variables, and coordination rules
-4. An external terminal opens automatically with `claude --dangerously-skip-permissions` and the full primer submitted
+2. AUI generates any missing skill files (existing ones are preserved)
+3. A comprehensive briefing is built -- company context, team overview, all skill file contents, variables, and coordination rules
+4. An external terminal opens and launches Claude CLI with the full briefing
 
-The primer is also saved to `.aui/deploy-primer.md` for reference.
+The briefing is also saved to `.aui/deploy-primer.md` for reference.
 
-### Automatic Skill File Generation
+### Employee Schedules
 
-When you deploy a team, AUI automatically generates fully-detailed `SKILL.md` files for any team that doesn't already have one (existing skill files are preserved). Each generated file includes:
+Set up recurring work schedules using real OS-level task scheduling -- Windows Task Scheduler on Windows, crontab on macOS/Linux. Your AI employees show up for work on time, every time, even when AUI is closed.
 
-- Company and user context
-- Global and team-scoped skills with inline content
-- Variables tables for teams and agents
-- Detailed agent profiles (model, tools, permissions, sub-agents)
-- Coordination rules and deployment instructions
-
-### Cron Job Scheduler
-
-Schedule teams for automated, recurring deployment using real OS-level tasks:
-
-- **Native scheduling** -- creates Windows Task Scheduler tasks or crontab entries (macOS/Linux), so jobs run even when AUI is closed
-- **Flexible repeat options** -- once, hourly, daily, weekly, or custom cron expressions
+- **Flexible timing** -- once, hourly, daily, weekly, or custom cron expressions
 - **Team selector** -- pick any team from your canvas to schedule
-- **Visual job list** -- see all scheduled runs at a glance with toggle on/off and delete controls
-- **Fresh terminal per run** -- each scheduled execution opens a new terminal with the full deployment primer
-- **Persistent** -- schedules survive app restarts; metadata stored in `.aui/schedules.json`, deploy scripts in `.aui/schedules/`
+- **Visual job list** -- see all scheduled runs with toggle and delete controls
+- **Fresh briefing per run** -- each execution opens a new terminal with the full deployment primer
+- **Persistent** -- schedules survive app restarts
 
-### Settings Panel
+### Employee Profiles
+
+Click any employee to open their full profile in the side inspector. All changes auto-save after a brief pause, so you never lose edits when clicking away.
+
+- **Model selection** -- choose which Claude model each employee uses
+- **Tools and permissions** -- configure what each employee can access
+- **Descriptions** -- write manually or generate with AI
+- **Variables** -- key-value pairs for API keys, URLs, and runtime configs
+- **Skills** -- attach and manage skill files per employee
+
+### Settings and Data
 
 - Claude API key management (show/hide toggle)
-- Color pickers for team, agent, and accent colors
-- Auto-save toggle
-- Live CSS variable updates for accent theming
-- **Data management** -- export your entire tree to a JSON file or import a previously exported tree to restore or share configurations
-
-### File Watcher
-
-AUI watches the filesystem for external changes to skill files and agent configs, keeping the canvas in sync with edits made outside the app.
+- Color pickers for team, employee, and accent colors
+- Auto-save toggle with live CSS theming
+- **Export/Import** -- save your entire org to a JSON file or import a previously exported tree to restore or share configurations
 
 ---
 
-## Tech Stack
+## Getting Started
 
-| Layer       | Technology                                              |
-|-------------|---------------------------------------------------------|
-| Desktop     | [Tauri v2](https://v2.tauri.app/) (Rust backend)       |
-| Frontend    | [React 19](https://react.dev/) + TypeScript             |
-| Bundler     | [Vite 7](https://vite.dev/)                             |
-| Canvas      | [@xyflow/react](https://reactflow.dev/) (React Flow v12) + [dagre](https://github.com/dagrejs/dagre) |
-| State       | [Zustand v5](https://zustand.docs.pmnd.rs/)            |
-| Editor      | [Monaco Editor](https://microsoft.github.io/monaco-editor/) |
-| Parsing     | [gray-matter](https://github.com/jonschlinkert/gray-matter) + [yaml](https://eemeli.org/yaml/) |
-| Validation  | [Zod](https://zod.dev/)                                |
-| Native APIs | Tauri FS, Dialog, and Shell plugins                     |
+### Download (Recommended)
 
----
+**[Download AUI for Windows](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.exe` installer and you're running in seconds.
 
-## Project Structure
+> macOS and Linux installers coming soon. For now, build from source below.
 
-```
-src/
-  components/
-    tree/            # TreeCanvas, OrgNode, layout engine
-    inspector/       # InspectorPanel, AgentEditor, GroupEditor, SkillEditor
-    context-hub/     # ContextHub menu, FileViewer
-    common/          # Toolbar, ValidationBanner, SearchBar
-    settings/        # SettingsPanel
-    schedule/        # SchedulePanel (cron job manager)
-    dialogs/         # CreateNodeDialog, DeleteConfirmDialog
-  store/
-    tree-store.ts    # Tree state, node CRUD, deploy (Zustand)
-    ui-store.ts      # UI state -- inspector, multi-select, panels
-  services/
-    claude-api.ts    # Anthropic Messages API client
-    file-scanner.ts  # Filesystem scanning for agents/skills
-    file-watcher.ts  # Live file change detection
-    file-writer.ts   # Skill file and primer generation
-    agent-parser.ts  # Agent config parsing
-    skill-parser.ts  # Skill file parsing
-    skill-scanner.ts # Skill directory scanning
-    settings-parser.ts # Settings I/O
-    scheduler.ts     # OS-level task scheduling (schtasks/crontab)
-  types/
-    aui-node.ts      # Core AuiNode type, NodeVariable
-    agent.ts         # Agent configuration types
-    skill.ts         # Skill definition types
-    settings.ts      # App settings types
-  utils/
-    paths.ts         # Path resolution helpers
-    validation.ts    # Input validation
-    grouping.ts      # Node grouping logic
-    templates.ts     # Skill/primer templates
-    fs-stub.ts       # Filesystem abstraction
-src-tauri/           # Rust backend (Tauri commands, capabilities, plugins)
-```
+### Build from Source
 
----
-
-## Quick Start
+<details>
+<summary><strong>For developers or non-Windows platforms</strong></summary>
 
 **Paste into Claude Code** (fastest):
 ```
@@ -210,21 +144,15 @@ pnpm install
 pnpm tauri dev
 ```
 
-That's it -- from clone to running app. See [Prerequisites](#prerequisites) below if you need to set up your environment first.
-
-> **Note:** Running `pnpm dev` starts only the Vite frontend without native Tauri features. For the full experience -- file access, skill deployment, terminal spawning -- use `pnpm tauri dev`.
-
-### Prerequisites
-
-You need three things installed before running the Quick Start commands:
+#### Prerequisites
 
 | Requirement | Version | Install |
 |-------------|---------|---------|
 | **Node.js** | 18+ | [nodejs.org](https://nodejs.org/) |
 | **pnpm** | 9+ | `npm install -g pnpm` |
-| **Rust** | latest stable | See [platform notes](#platform-setup) below |
+| **Rust** | latest stable | [rustup.rs](https://rustup.rs/) |
 
-### Platform Setup
+#### Platform Setup
 
 <details>
 <summary><strong>Windows</strong></summary>
@@ -259,13 +187,33 @@ Restart your terminal, then run the Quick Start commands.
 
 </details>
 
-### Build for Production
+#### Build for Production
 
 ```bash
 pnpm tauri build
 ```
 
-This produces platform-specific installers in `src-tauri/target/release/bundle/`.
+Produces platform-specific installers in `src-tauri/target/release/bundle/`.
+
+</details>
+
+> **Note:** `pnpm dev` runs only the frontend. For the full desktop experience -- file access, deployment, terminal spawning -- use `pnpm tauri dev`.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Desktop | [Tauri v2](https://v2.tauri.app/) (Rust backend) |
+| Frontend | [React 19](https://react.dev/) + TypeScript |
+| Bundler | [Vite 7](https://vite.dev/) |
+| Canvas | [@xyflow/react](https://reactflow.dev/) (React Flow v12) + [dagre](https://github.com/dagrejs/dagre) |
+| State | [Zustand v5](https://zustand.docs.pmnd.rs/) |
+| Editor | [Monaco Editor](https://microsoft.github.io/monaco-editor/) |
+| Parsing | [gray-matter](https://github.com/jonschlinkert/gray-matter) + [yaml](https://eemeli.org/yaml/) |
+| Validation | [Zod](https://zod.dev/) |
+| Native APIs | Tauri FS, Dialog, and Shell plugins |
 
 ---
 
@@ -273,44 +221,37 @@ This produces platform-specific installers in `src-tauri/target/release/bundle/`
 
 AUI stores its configuration in a `.aui/` directory at the project root:
 
-| File                      | Purpose                                |
-|---------------------------|----------------------------------------|
-| `.aui/settings.json`     | API key, color preferences, auto-save  |
-| `.aui/tree.json`         | Tree structure, group metadata, variables |
-| `.aui/deploy-primer.md`  | Last generated deploy primer           |
-| `.aui/schedules.json`    | Cron job definitions                   |
-| `.aui/schedules/`        | Generated deploy scripts for scheduled runs |
+| File | Purpose |
+|------|---------|
+| `.aui/settings.json` | API key, color preferences, auto-save |
+| `.aui/tree.json` | Tree structure, group metadata, variables |
+| `.aui/deploy-primer.md` | Last generated deploy primer |
+| `.aui/schedules.json` | Scheduled job definitions |
+| `.aui/schedules/` | Generated deploy scripts for scheduled runs |
 
-Set your Claude API key in the Settings panel (gear icon in the menu) to enable AI-powered features.
+Set your Claude API key in the Settings panel to enable AI-powered features.
 
 ---
 
 ## Platform Support
 
-| Platform | Status  | Terminal        |
-|----------|---------|-----------------|
-| Windows  | Primary | PowerShell      |
-| macOS    | Supported | bash          |
-| Linux    | Supported | bash          |
+| Platform | Status | Terminal |
+|----------|--------|---------|
+| Windows | Primary | PowerShell |
+| macOS | Supported | bash |
+| Linux | Supported | bash |
 
-Deploy spawns an external terminal window on all platforms and launches the Claude CLI with the generated primer.
+Deploy spawns an external terminal window on all platforms and launches the Claude CLI with the generated briefing.
 
 ---
 
 ## Development
 
 ```bash
-# Frontend only (hot reload, no native features)
-pnpm dev
-
-# Full desktop app (hot reload + Tauri native APIs)
-pnpm tauri dev
-
-# Type-check
-pnpm build
+pnpm dev          # Frontend only (hot reload, no native features)
+pnpm tauri dev    # Full desktop app (hot reload + Tauri native APIs)
+pnpm build        # Type-check
 ```
-
-The Tauri dev server runs the Vite frontend at `http://localhost:5173` and wraps it in a native window with access to the filesystem, shell, and dialog APIs.
 
 ---
 
@@ -320,24 +261,10 @@ The Tauri dev server runs the Vite frontend at `http://localhost:5173` and wraps
 
 ---
 
-## Built With
-
-- [Tauri](https://tauri.app/) -- lightweight, secure desktop apps with Rust
-- [React](https://react.dev/) -- UI framework
-- [React Flow](https://reactflow.dev/) -- interactive node-based canvas
-- [Zustand](https://zustand.docs.pmnd.rs/) -- minimal state management
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) -- VS Code's editor component
-- [Vite](https://vite.dev/) -- fast frontend tooling
-- [Claude](https://www.anthropic.com/claude) by Anthropic -- AI-powered features
-
----
-
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-## Star History
-
-If AUI helps you manage your Claude Code agents, consider giving it a star -- it helps others discover the project.
+If AUI helps you manage your AI workforce, consider giving it a star -- it helps others discover the project.
