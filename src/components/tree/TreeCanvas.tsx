@@ -430,6 +430,20 @@ export function TreeCanvas() {
     ];
   }, [contextMenu, selectNode, toggleInspector, reparentNode]);
 
+  // Auto-select root node when welcome screen is showing so inspector opens immediately
+  const showWelcomeEarly = !loading && !error && treeNodes.size <= 1;
+  const hasAutoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (showWelcomeEarly && treeNodes.has("root") && !hasAutoSelectedRef.current) {
+      hasAutoSelectedRef.current = true;
+      const timer = setTimeout(() => selectNode("root"), 100);
+      return () => clearTimeout(timer);
+    }
+    if (!showWelcomeEarly) {
+      hasAutoSelectedRef.current = false;
+    }
+  }, [showWelcomeEarly, treeNodes, selectNode]);
+
   if (loading) {
     return (
       <div
@@ -479,20 +493,6 @@ export function TreeCanvas() {
   }
 
   const showWelcome = treeNodes.size <= 1;
-
-  // Auto-select root node when welcome screen is showing so inspector opens immediately
-  const hasAutoSelectedRef = useRef(false);
-  useEffect(() => {
-    if (showWelcome && treeNodes.has("root") && !hasAutoSelectedRef.current) {
-      hasAutoSelectedRef.current = true;
-      // Small delay so the canvas renders first
-      const timer = setTimeout(() => selectNode("root"), 100);
-      return () => clearTimeout(timer);
-    }
-    if (!showWelcome) {
-      hasAutoSelectedRef.current = false;
-    }
-  }, [showWelcome, treeNodes, selectNode]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
