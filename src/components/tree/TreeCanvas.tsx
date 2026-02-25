@@ -257,7 +257,8 @@ export function TreeCanvas() {
   // Drag-drop reparenting + position persistence
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, draggedNode: Node) => {
-      const wasGroupDrag = dragStartRef.current?.parentId === draggedNode.id;
+      const dragRef = dragStartRef.current;
+      const wasGroupDrag = dragRef?.parentId === draggedNode.id;
       dragStartRef.current = null;
       if (draggedNode.id === "root") {
         // Save root position
@@ -281,17 +282,37 @@ export function TreeCanvas() {
       }
 
       // No reparenting — save position(s)
-      if (wasGroupDrag) {
-        // Group drag: save positions for the group + all visible descendants
+      if (wasGroupDrag && dragRef) {
+        // Group drag: save positions for the group + all visible descendants,
+        // AND offset hidden (collapsed) descendants' saved positions by the drag delta
         const descendantIds = new Set(getDescendantIds(draggedNode.id));
+        const dx = draggedNode.position.x - dragRef.startPos.x;
+        const dy = draggedNode.position.y - dragRef.startPos.y;
+
         const batch: Record<string, { x: number; y: number }> = {
           [draggedNode.id]: { x: draggedNode.position.x, y: draggedNode.position.y },
         };
+
+        // Visible descendants: use their current React Flow positions
+        const visibleIds = new Set<string>();
         for (const n of nodes) {
           if (descendantIds.has(n.id)) {
             batch[n.id] = { x: n.position.x, y: n.position.y };
+            visibleIds.add(n.id);
           }
         }
+
+        // Hidden descendants (collapsed): offset their saved positions by the drag delta
+        const currentPositions = useTreeStore.getState().metadata?.positions ?? {};
+        for (const id of descendantIds) {
+          if (!visibleIds.has(id) && currentPositions[id]) {
+            batch[id] = {
+              x: currentPositions[id].x + dx,
+              y: currentPositions[id].y + dy,
+            };
+          }
+        }
+
         useTreeStore.getState().saveNodePositions(batch);
       } else {
         useTreeStore.getState().saveNodePosition(draggedNode.id, { x: draggedNode.position.x, y: draggedNode.position.y });
@@ -459,6 +480,20 @@ export function TreeCanvas() {
 
   const showWelcome = treeNodes.size <= 1;
 
+  // Auto-select root node when welcome screen is showing so inspector opens immediately
+  const hasAutoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (showWelcome && treeNodes.has("root") && !hasAutoSelectedRef.current) {
+      hasAutoSelectedRef.current = true;
+      // Small delay so the canvas renders first
+      const timer = setTimeout(() => selectNode("root"), 100);
+      return () => clearTimeout(timer);
+    }
+    if (!showWelcome) {
+      hasAutoSelectedRef.current = false;
+    }
+  }, [showWelcome, treeNodes, selectNode]);
+
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <SearchBar />
@@ -576,10 +611,8 @@ export function TreeCanvas() {
                 lineHeight: 1.8,
               }}
             >
-              <span>Double-click the canvas to create a team</span>
-              <span>
-                or press <kbd style={{ background: "var(--bg-surface, #1c2333)", padding: "2px 6px", borderRadius: 4, fontSize: 12, border: "1px solid var(--border-color)" }}>Ctrl+N</kbd> to open the create dialog
-              </span>
+              <span>Click the <strong style={{ color: "#d29922" }}>You</strong> node to get started</span>
+              <span>Set up your company description, then generate teams</span>
             </div>
           </div>
         </div>

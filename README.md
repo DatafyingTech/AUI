@@ -20,6 +20,21 @@ Every token your Claude Code agents spend orienting, discovering context, or fig
 
 ---
 
+## At a Glance
+
+| | Feature | Description |
+|---|---|---|
+| **Canvas** | Drag-and-drop org chart | Pan, zoom, collapse teams, reparent with drag proximity |
+| **AI Teams** | Generate from description | Describe your goals, get a complete team structure instantly |
+| **Deploy** | One-click launch | Auto-generates primers with full context and opens Claude CLI |
+| **Schedule** | OS-level cron jobs | Set up recurring agent runs via Task Scheduler / crontab |
+| **Inspector** | Auto-saving editors | Edit agents, skills, variables, and descriptions in-place |
+| **Layouts** | Multiple named layouts | Save, switch, and rename different org structures |
+| **File Sync** | Real-time watcher | Edits made outside AUI sync to the canvas automatically |
+| **Portable** | Zero lock-in | Reads and writes standard Claude Code config files |
+
+---
+
 ## Screenshots
 **Example 1: Cypto Investment firm**
 

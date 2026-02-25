@@ -417,10 +417,12 @@ function RootEditor({ node }: { node: AuiNode }) {
 
 Company/Project Description: "${description}"
 ${globalSkillNames.length > 0 ? `Global skills available: ${globalSkillNames.join(", ")}` : ""}
-Max teams: ${teamCount}
-Max agents per team: ${agentsPer}
 
-Based on the goals described above, generate an optimal team structure. Each team should have a clear purpose that contributes to achieving the stated goals. Agent roles should be specific and complementary.
+STRICT REQUIREMENTS:
+- Generate EXACTLY ${teamCount} teams. Not fewer, not more.
+- Each team MUST have EXACTLY ${agentsPer} agents. Not fewer, not more.
+- Every team must have a clear purpose that contributes to achieving the stated goals.
+- Agent roles must be specific and complementary within their team.
 
 Return ONLY valid JSON in this exact format (no markdown, no explanation):
 {
@@ -435,7 +437,7 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
   ]
 }
 
-Make team and agent names descriptive and specific. Use title case for names. Each team should address a different aspect of the goals.`;
+IMPORTANT: The JSON must contain exactly ${teamCount} objects in the "teams" array, and each team must contain exactly ${agentsPer} objects in its "agents" array. Make team and agent names descriptive and specific. Use title case for names. Each team should address a different aspect of the goals.`;
 
       const result = await generateText(apiKey, prompt, { maxTokens: 2048 });
 

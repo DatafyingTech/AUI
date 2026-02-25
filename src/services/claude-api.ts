@@ -69,19 +69,33 @@ export async function generateText(
     body.system = options.systemPrompt;
   }
 
-  const resp = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify(body),
-  });
+  let resp: Response;
+  try {
+    resp = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown network error";
+    throw new Error(
+      `Network error calling Claude API: ${message}. Check your internet connection and try again.`,
+    );
+  }
 
   if (!resp.ok) {
     const errText = await resp.text().catch(() => "Unknown error");
+    if (resp.status === 401) {
+      throw new Error("Invalid API key. Check your key in Settings.");
+    }
+    if (resp.status === 429) {
+      throw new Error("Rate limited. Please wait a moment and try again.");
+    }
     throw new Error(`Claude API error (${resp.status}): ${errText}`);
   }
 

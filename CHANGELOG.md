@@ -1,5 +1,18 @@
 # AUI (Agent UI) — Changelog
 
+## v0.4.2 — February 25, 2026
+
+### Bug Fixes
+- **Fixed "Failed to fetch" on Generate Teams** — API fetch errors now have proper try-catch handling with distinct messages for network errors, invalid API keys (401), and rate limits (429) instead of a generic "Failed to fetch" TypeError
+- **Fixed collapsed group drag breaking child positions** — when a collapsed team is dragged, hidden children's saved positions are now offset by the drag delta so they maintain their relative positions when expanded. Previously, children would snap back to their old absolute positions
+- **Fixed Generate not respecting team/agent counts** — the AI prompt now uses "EXACTLY N teams" and "EXACTLY N agents" language with strict requirements instead of "Max N" which let the LLM return fewer
+
+### Improvements
+- **Updated welcome message** — new blank layouts now show "Click the You node to get started" instead of the outdated "Double-click the canvas" instruction, and auto-selects the root node so the inspector opens immediately
+- **README "At a Glance" table** — added a compact feature summary table for quick scanning by GitHub visitors
+
+---
+
 ## v0.4.1 — February 25, 2026
 
 ### New Features
