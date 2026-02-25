@@ -26,6 +26,7 @@ import { toast } from "@/components/common/Toast";
 
 const nodeTypes = { orgNode: OrgNode };
 const edgeTypes = { insertEdge: InsertEdge };
+const EMPTY_POSITIONS: Record<string, { x: number; y: number }> = {};
 
 const defaultEdgeOptions = {
   type: "insertEdge" as const,
@@ -93,7 +94,7 @@ export function TreeCanvas() {
   const toggleInspector = useUiStore((s) => s.toggleInspector);
   const projectPath = useTreeStore((s) => s.projectPath);
   const updateNode = useTreeStore((s) => s.updateNode);
-  const savedPositions = useTreeStore((s) => s.metadata?.positions ?? {});
+  const savedPositions = useTreeStore((s) => s.metadata?.positions) ?? EMPTY_POSITIONS;
 
   const toggleMultiSelect = useUiStore((s) => s.toggleMultiSelect);
   const clearMultiSelect = useUiStore((s) => s.clearMultiSelect);
