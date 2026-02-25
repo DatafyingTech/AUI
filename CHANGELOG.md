@@ -1,5 +1,22 @@
 # ATM (Agent Team Manager) — Changelog
 
+## v0.6.1 — February 25, 2026
+
+### Pipeline Deploy Overhaul: Inter-Step Handoffs
+- **Step handoff summaries** — each step in a pipeline now writes a handoff file (`step-{N}-output.md`) summarizing what was accomplished, key decisions, and outputs. The next step's primer automatically instructs Claude to read the previous step's handoff, so team 2 knows exactly what team 1 did
+- **Previous/Next step context** — each step's primer now includes a "Previous Steps" section (with objectives of all completed steps) and a "Next Steps" section (what comes after), giving each team full pipeline awareness
+- **Error handling** — deploy scripts now check exit codes after each step. If a step fails, subsequent steps are skipped and the pipeline reports which step failed
+- **Status tracking** — a `status.json` file is written to the pipeline directory, tracking each step's status (pending/running/completed/failed) with timestamps. Updated in real-time as steps execute
+- **Better terminal output** — timestamps on every step, elapsed time per step, total pipeline duration, clear pass/fail summary with visual formatting
+
+### Technical
+- `deployPipeline` method in tree-store.ts completely rewritten with handoff architecture
+- Primer template now includes `## Previous Steps`, `## Next Steps`, and handoff read/write instructions
+- Deploy scripts (PS1 + bash) now track `$LASTEXITCODE` / `$?` and skip remaining steps on failure
+- `status.json` written to `.aui/pipeline-{slug}/` with per-step timing data
+
+---
+
 ## v0.6.0 — February 25, 2026
 
 ### New Feature: Typed Variables with Sensitive Masking

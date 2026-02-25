@@ -556,9 +556,23 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       return "";
     };
 
+    // Build step metadata for cross-referencing
+    const stepMetas: { teamName: string; teamSlug: string; objective: string }[] = [];
+    for (const step of pipeline.pipelineSteps) {
+      const teamNode = nodes.get(step.teamId);
+      const tName = teamNode?.name ?? "Unknown Team";
+      const tSlug = tName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      stepMetas.push({
+        teamName: tName,
+        teamSlug: tSlug,
+        objective: step.prompt || "Complete the tasks assigned to this team.",
+      });
+    }
+
     // Generate primer for each step
     const primerPaths: string[] = [];
     const stepTeamNames: string[] = [];
+    const outputPaths: string[] = [];
 
     for (let i = 0; i < pipeline.pipelineSteps.length; i++) {
       const step = pipeline.pipelineSteps[i];
@@ -567,6 +581,9 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
       const teamSlug = teamNode.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       stepTeamNames.push(teamNode.name);
+
+      const outputPath = join(pipelineDir, `step-${i + 1}-output.md`);
+      outputPaths.push(outputPath);
 
       // Get root context
       const rootNode = nodes.get("root");
@@ -620,6 +637,34 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
       const objective = step.prompt || "Complete the tasks assigned to this team.";
 
+      // Build previous/next step context
+      let prevStepsSection = "";
+      if (i > 0) {
+        const prevLines = stepMetas.slice(0, i).map((s, idx) =>
+          `  ${idx + 1}. **${s.teamName}** — ${s.objective}`
+        );
+        const prevOutputPath = outputPaths[i - 1];
+        prevStepsSection = `
+## Previous Steps (completed before you)
+${prevLines.join("\n")}
+
+**IMPORTANT:** The previous step wrote a handoff summary. Read it now:
+\`${prevOutputPath}\`
+Use the Read tool to read this file and incorporate any relevant context, decisions, or outputs from the previous team into your work.
+`;
+      }
+
+      let nextStepsSection = "";
+      if (i < stepMetas.length - 1) {
+        const nextLines = stepMetas.slice(i + 1).map((s, idx) =>
+          `  ${i + 2 + idx}. **${s.teamName}** — ${s.objective}`
+        );
+        nextStepsSection = `
+## Next Steps (will run after you)
+${nextLines.join("\n")}
+`;
+      }
+
       const primer = `You are being deployed as the senior team manager for "${teamNode.name}".
 This is step ${i + 1} of ${pipeline.pipelineSteps.length} in pipeline "${pipeline.name}".
 
@@ -630,7 +675,7 @@ ${globalSkillNames.length > 0 ? `- **Global Skills:** ${globalSkillNames.join(",
 ${siblingTeams.length > 0 ? `- **Other Teams:** ${siblingTeams.join(", ")}` : ""}
 ${globalVars.length > 0 ? `\n### Global Variables\n${globalVars.map((v: any) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
 ${pipelineVars.length > 0 ? `\n### Pipeline Variables\n${pipelineVars.map((v) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
-
+${prevStepsSection}
 ## Team: ${teamNode.name}
 ${teamNode.promptBody || "(no description)"}
 ${teamSkillBlocks.length > 0 ? `\n### Team Skills\n${teamSkillBlocks.join("\n")}` : ""}
@@ -644,7 +689,7 @@ ${agentBlocks.join("\n")}
 
 ## OBJECTIVE
 ${objective}
-
+${nextStepsSection}
 ## DEPLOYMENT INSTRUCTIONS
 You MUST follow these steps exactly:
 
@@ -656,7 +701,10 @@ You MUST follow these steps exactly:
    - Include their FULL skill file content in the prompt
 3. **Create and assign tasks** — Use \`TaskCreate\` to break the objective into tasks, then \`TaskUpdate\` with \`owner\` to assign
 4. **Coordinate** — Monitor progress via \`TaskList\`, resolve conflicts
-5. **Complete** — When all tasks are done, compile a summary and shut down the team
+5. **Write handoff summary** — When all tasks are done, use the Write tool to write a summary of what was accomplished, key decisions, and any outputs to:
+   \`${outputPath}\`
+   This file will be read by the next team in the pipeline. Include: what was done, key files created/modified, important decisions, and anything the next team needs to know.
+6. **Shut down** — After writing the handoff, shut down the team
 ${teamSkillBlocks.length > 0 || globalSkillNames.length > 0 ? `\n## SKILLS\nSkills listed above can be invoked using the \`Skill\` tool.` : ""}
 IMPORTANT: Each agent already has their full skill file content above. Pass it directly in their spawn prompt.
 `;
@@ -666,25 +714,90 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       primerPaths.push(primerPath);
     }
 
+    // Write initial status.json
+    const statusPath = join(pipelineDir, "status.json");
+    const statusInit = {
+      pipeline: pipeline.name,
+      totalSteps: primerPaths.length,
+      startedAt: new Date().toISOString(),
+      steps: stepTeamNames.map((name, i) => ({
+        step: i + 1,
+        team: name,
+        status: "pending",
+        startedAt: null as string | null,
+        completedAt: null as string | null,
+      })),
+    };
+    await writeTextFile(statusPath, JSON.stringify(statusInit, null, 2));
+
     // Generate deploy script
     const isWindows = navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
+    const statusWinPath = statusPath.replace(/\//g, "\\");
 
     if (isWindows) {
+      const esc = (s: string) => s.replace(/"/g, '`"');
       const lines: string[] = [
         `Remove-Item Env:CLAUDECODE -ErrorAction SilentlyContinue`,
-        `Write-Host "=== Pipeline: ${pipeline.name.replace(/"/g, '`"')} ===" -ForegroundColor Cyan`,
-        `Write-Host "Steps: ${primerPaths.length}" -ForegroundColor Yellow`,
+        `$ErrorActionPreference = 'Continue'`,
+        `$startTime = Get-Date`,
+        ``,
         `Write-Host ""`,
+        `Write-Host "================================================================" -ForegroundColor Cyan`,
+        `Write-Host "  PIPELINE: ${esc(pipeline.name)}" -ForegroundColor Cyan`,
+        `Write-Host "  Steps: ${primerPaths.length} | Started: $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Yellow`,
+        `Write-Host "================================================================" -ForegroundColor Cyan`,
+        `Write-Host ""`,
+        ``,
+        `$failed = $false`,
       ];
+
       for (let i = 0; i < primerPaths.length; i++) {
         const winPath = primerPaths[i].replace(/\//g, "\\").replace(/'/g, "''");
-        const tName = stepTeamNames[i]?.replace(/'/g, "''") ?? "Team";
-        lines.push(`Write-Host "--- Step ${i + 1}/${primerPaths.length}: ${tName} ---" -ForegroundColor Green`);
-        lines.push(`claude --dangerously-skip-permissions "Read the deployment primer at '${winPath}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`);
-        lines.push(`Write-Host "Step ${i + 1} complete." -ForegroundColor Green`);
-        lines.push(`Write-Host ""`);
+        const tName = stepTeamNames[i]?.replace(/"/g, '`"') ?? "Team";
+        lines.push(``);
+        lines.push(`# --- Step ${i + 1} ---`);
+        lines.push(`if (-not $failed) {`);
+        lines.push(`  $stepStart = Get-Date`);
+        lines.push(`  Write-Host "[$((Get-Date).ToString('HH:mm:ss'))] Step ${i + 1}/${primerPaths.length}: ${tName}" -ForegroundColor Green`);
+        lines.push(`  Write-Host "  Starting Claude Code session..." -ForegroundColor DarkGray`);
+        lines.push(`  `);
+        // Update status.json to "running"
+        lines.push(`  $status = Get-Content '${statusWinPath.replace(/'/g, "''")}' | ConvertFrom-Json`);
+        lines.push(`  $status.steps[${i}].status = 'running'`);
+        lines.push(`  $status.steps[${i}].startedAt = (Get-Date -Format o)`);
+        lines.push(`  $status | ConvertTo-Json -Depth 5 | Set-Content '${statusWinPath.replace(/'/g, "''")}' -Encoding UTF8`);
+        lines.push(`  `);
+        lines.push(`  claude --dangerously-skip-permissions "Read the deployment primer at '${winPath}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`);
+        lines.push(`  $exitCode = $LASTEXITCODE`);
+        lines.push(`  $elapsed = (Get-Date) - $stepStart`);
+        lines.push(`  `);
+        // Update status.json to completed/failed
+        lines.push(`  $status = Get-Content '${statusWinPath.replace(/'/g, "''")}' | ConvertFrom-Json`);
+        lines.push(`  if ($exitCode -ne 0) {`);
+        lines.push(`    $status.steps[${i}].status = 'failed'`);
+        lines.push(`    Write-Host "  FAILED (exit code $exitCode) after $($elapsed.ToString('hh\\:mm\\:ss'))" -ForegroundColor Red`);
+        lines.push(`    $failed = $true`);
+        lines.push(`  } else {`);
+        lines.push(`    $status.steps[${i}].status = 'completed'`);
+        lines.push(`    Write-Host "  Completed in $($elapsed.ToString('hh\\:mm\\:ss'))" -ForegroundColor Green`);
+        lines.push(`  }`);
+        lines.push(`  $status.steps[${i}].completedAt = (Get-Date -Format o)`);
+        lines.push(`  $status | ConvertTo-Json -Depth 5 | Set-Content '${statusWinPath.replace(/'/g, "''")}' -Encoding UTF8`);
+        lines.push(`  Write-Host ""`);
+        lines.push(`}`);
       }
-      lines.push(`Write-Host "=== Pipeline complete ===" -ForegroundColor Cyan`);
+
+      lines.push(``);
+      lines.push(`$totalElapsed = (Get-Date) - $startTime`);
+      lines.push(`Write-Host "================================================================" -ForegroundColor Cyan`);
+      lines.push(`if ($failed) {`);
+      lines.push(`  Write-Host "  PIPELINE FAILED — check output above" -ForegroundColor Red`);
+      lines.push(`} else {`);
+      lines.push(`  Write-Host "  PIPELINE COMPLETE" -ForegroundColor Green`);
+      lines.push(`}`);
+      lines.push(`Write-Host "  Total time: $($totalElapsed.ToString('hh\\:mm\\:ss'))" -ForegroundColor Yellow`);
+      lines.push(`Write-Host "================================================================" -ForegroundColor Cyan`);
+      lines.push(`Write-Host ""`);
       lines.push(`Read-Host "Press Enter to close"`);
 
       const scriptPath = join(pipelineDir, "deploy.ps1");
@@ -693,22 +806,55 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("open_terminal", { scriptPath: winScriptPath });
     } else {
+      const esc = (s: string) => s.replace(/'/g, "'\\''");
       const lines: string[] = [
         "#!/bin/bash",
         "unset CLAUDECODE",
-        `echo '=== Pipeline: ${pipeline.name.replace(/'/g, "'\\''")} ==='`,
-        `echo 'Steps: ${primerPaths.length}'`,
+        `START_TIME=$(date +%s)`,
+        ``,
         `echo ''`,
+        `echo '================================================================'`,
+        `echo '  PIPELINE: ${esc(pipeline.name)}'`,
+        `echo "  Steps: ${primerPaths.length} | Started: $(date +%H:%M:%S)"`,
+        `echo '================================================================'`,
+        `echo ''`,
+        ``,
+        `FAILED=0`,
       ];
+
       for (let i = 0; i < primerPaths.length; i++) {
         const path = primerPaths[i].replace(/'/g, "'\\''");
         const tName = stepTeamNames[i]?.replace(/'/g, "'\\''") ?? "Team";
-        lines.push(`echo '--- Step ${i + 1}/${primerPaths.length}: ${tName} ---'`);
-        lines.push(`claude --dangerously-skip-permissions "Read the deployment primer at '${path}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`);
-        lines.push(`echo 'Step ${i + 1} complete.'`);
-        lines.push(`echo ''`);
+        lines.push(``);
+        lines.push(`# --- Step ${i + 1} ---`);
+        lines.push(`if [ $FAILED -eq 0 ]; then`);
+        lines.push(`  STEP_START=$(date +%s)`);
+        lines.push(`  echo "[$(date +%H:%M:%S)] Step ${i + 1}/${primerPaths.length}: ${tName}"`);
+        lines.push(`  echo "  Starting Claude Code session..."`);
+        lines.push(`  claude --dangerously-skip-permissions "Read the deployment primer at '${path}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`);
+        lines.push(`  EXIT_CODE=$?`);
+        lines.push(`  STEP_ELAPSED=$(( $(date +%s) - STEP_START ))`);
+        lines.push(`  if [ $EXIT_CODE -ne 0 ]; then`);
+        lines.push(`    echo "  FAILED (exit code $EXIT_CODE) after ${`$((STEP_ELAPSED/60))`}m ${`$((STEP_ELAPSED%60))`}s"`);
+        lines.push(`    FAILED=1`);
+        lines.push(`  else`);
+        lines.push(`    echo "  Completed in ${`$((STEP_ELAPSED/60))`}m ${`$((STEP_ELAPSED%60))`}s"`);
+        lines.push(`  fi`);
+        lines.push(`  echo ''`);
+        lines.push(`fi`);
       }
-      lines.push(`echo '=== Pipeline complete ==='`);
+
+      lines.push(``);
+      lines.push(`TOTAL_ELAPSED=$(( $(date +%s) - START_TIME ))`);
+      lines.push(`echo '================================================================'`);
+      lines.push(`if [ $FAILED -ne 0 ]; then`);
+      lines.push(`  echo '  PIPELINE FAILED — check output above'`);
+      lines.push(`else`);
+      lines.push(`  echo '  PIPELINE COMPLETE'`);
+      lines.push(`fi`);
+      lines.push(`echo "  Total time: $((TOTAL_ELAPSED/60))m $((TOTAL_ELAPSED%60))s"`);
+      lines.push(`echo '================================================================'`);
+      lines.push(`echo ''`);
       lines.push(`read -p 'Press Enter to close'`);
 
       const scriptPath = join(pipelineDir, "deploy.sh");
