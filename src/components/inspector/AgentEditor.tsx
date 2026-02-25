@@ -182,7 +182,6 @@ export function AgentEditor({ node }: AgentEditorProps) {
   const [variables, setVariables] = useState<NodeVariable[]>(node.variables);
   const [promptBody, setPromptBody] = useState(node.promptBody);
   const [errors, setErrors] = useState<string[]>(node.validationErrors);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [hooksOpen, setHooksOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
 
@@ -224,7 +223,6 @@ export function AgentEditor({ node }: AgentEditorProps) {
     setVariables(node.variables);
     setPromptBody(node.promptBody);
     setErrors(node.validationErrors);
-    setSavedAt(null);
   }, [node.id, node.config, node.promptBody, node.validationErrors, node.name, node.variables]);
 
   const resetForm = () => {
@@ -268,12 +266,6 @@ export function AgentEditor({ node }: AgentEditorProps) {
       lastModified: Date.now(),
     });
     saveNode(node.id);
-
-    const now = Date.now();
-    setSavedAt(now);
-    setTimeout(() => {
-      setSavedAt((prev) => (prev === now ? null : prev));
-    }, 2000);
   };
 
   // Autosave on changes
@@ -568,22 +560,6 @@ export function AgentEditor({ node }: AgentEditorProps) {
       {/* Action Buttons */}
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <button
-          onClick={handleSave}
-          style={{
-            flex: 1,
-            padding: "8px 16px",
-            background: "var(--accent-blue)",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          Save
-        </button>
-        <button
           onClick={handleValidate}
           style={{
             flex: 1,
@@ -614,18 +590,6 @@ export function AgentEditor({ node }: AgentEditorProps) {
         >
           Discard
         </button>
-        {savedAt !== null && (
-          <span
-            style={{
-              color: "var(--accent-green)",
-              fontSize: 12,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Saved!
-          </span>
-        )}
       </div>
     </div>
   );

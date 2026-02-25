@@ -1,5 +1,22 @@
 # AUI (Agent UI) — Changelog
 
+## v0.4.1 — February 25, 2026
+
+### New Features
+- **Node position persistence** — drag nodes to custom positions and they stay. Positions are saved per-layout and survive collapse/uncollapse, app restarts, and layout switches. Group drags save all children positions too
+- **Removed duplicate generate button** — consolidated the "Generate NxN" and "Generate from Description" buttons into a single "Generate Teams" button that uses the smarter description-aware prompt
+- **Removed Save buttons** — all editors now rely on autosave (from v0.4.0). Save buttons removed from RootEditor, AgentEditor, SkillEditor, and GroupEditor. Validate and Discard buttons remain where applicable
+
+### Technical
+- New tree store methods: `saveNodePosition`, `saveNodePositions`, `clearNodePosition` for position CRUD
+- `layout.ts` `layoutNodes` now accepts `savedPositions` parameter — prefers saved positions over dagre-calculated defaults
+- `TreeCanvas.tsx` uses ref pattern for saved positions to avoid re-layout loops on position saves
+- `onNodeDragStop` saves positions for single nodes and group drags, clears on reparent
+- Position cleanup in `removeNodeFromCanvas` when deleting nodes
+- Removed `savedAt` state and `setSavedAt` calls from all autosave editors (dead code after button removal)
+
+---
+
 ## v0.4.0 — February 25, 2026
 
 ### New Features

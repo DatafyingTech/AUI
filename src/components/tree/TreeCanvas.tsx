@@ -93,6 +93,7 @@ export function TreeCanvas() {
   const toggleInspector = useUiStore((s) => s.toggleInspector);
   const projectPath = useTreeStore((s) => s.projectPath);
   const updateNode = useTreeStore((s) => s.updateNode);
+  const savedPositions = useTreeStore((s) => s.metadata?.positions ?? {});
 
   const toggleMultiSelect = useUiStore((s) => s.toggleMultiSelect);
   const clearMultiSelect = useUiStore((s) => s.clearMultiSelect);
@@ -149,8 +150,13 @@ export function TreeCanvas() {
     [treeNodes, searchQuery, filterKind],
   );
 
+  // Use ref for savedPositions to avoid re-layout on every position save.
+  // Positions are applied when tree structure changes (nodes added/removed, collapse).
+  const savedPositionsRef = useRef(savedPositions);
+  savedPositionsRef.current = savedPositions;
+
   const { flowNodes, flowEdges } = useMemo(
-    () => layoutNodes(filteredNodes, collapsedGroups),
+    () => layoutNodes(filteredNodes, collapsedGroups, savedPositionsRef.current),
     [filteredNodes, collapsedGroups],
   );
 
@@ -247,25 +253,51 @@ export function TreeCanvas() {
     [setNodes],
   );
 
-  // Drag-drop reparenting
+  // Drag-drop reparenting + position persistence
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, draggedNode: Node) => {
+      const wasGroupDrag = dragStartRef.current?.parentId === draggedNode.id;
       dragStartRef.current = null;
-      if (draggedNode.id === "root") return;
+      if (draggedNode.id === "root") {
+        // Save root position
+        useTreeStore.getState().saveNodePosition("root", { x: draggedNode.position.x, y: draggedNode.position.y });
+        useTreeStore.getState().saveTreeMetadata();
+        return;
+      }
 
-      // Check proximity to other nodes
+      // Check proximity to other nodes for reparenting
       const PROXIMITY = 60;
       for (const otherNode of nodes) {
         if (otherNode.id === draggedNode.id) continue;
         const dx = Math.abs(draggedNode.position.x - otherNode.position.x);
         const dy = Math.abs(draggedNode.position.y - otherNode.position.y);
         if (dx < PROXIMITY && dy < PROXIMITY) {
+          // Reparenting — clear saved position so dagre places it under new parent
+          useTreeStore.getState().clearNodePosition(draggedNode.id);
           reparentNode(draggedNode.id, otherNode.id);
           return;
         }
       }
+
+      // No reparenting — save position(s)
+      if (wasGroupDrag) {
+        // Group drag: save positions for the group + all visible descendants
+        const descendantIds = new Set(getDescendantIds(draggedNode.id));
+        const batch: Record<string, { x: number; y: number }> = {
+          [draggedNode.id]: { x: draggedNode.position.x, y: draggedNode.position.y },
+        };
+        for (const n of nodes) {
+          if (descendantIds.has(n.id)) {
+            batch[n.id] = { x: n.position.x, y: n.position.y };
+          }
+        }
+        useTreeStore.getState().saveNodePositions(batch);
+      } else {
+        useTreeStore.getState().saveNodePosition(draggedNode.id, { x: draggedNode.position.x, y: draggedNode.position.y });
+      }
+      useTreeStore.getState().saveTreeMetadata();
     },
-    [nodes, reparentNode],
+    [nodes, reparentNode, getDescendantIds],
   );
 
   // Edge connection reparenting

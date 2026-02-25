@@ -324,10 +324,8 @@ function RootEditor({ node }: { node: AuiNode }) {
   const [ownerName, setOwnerName] = useState(node.name);
   const [description, setDescription] = useState(node.promptBody);
   const [addSkillId, setAddSkillId] = useState("");
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [teamCount, setTeamCount] = useState(3);
   const [agentsPer, setAgentsPer] = useState(3);
-  const [autoFilling, setAutoFilling] = useState(false);
   const [generatingGoals, setGeneratingGoals] = useState(false);
 
   // Filesystem-scanned skills
@@ -399,70 +397,6 @@ function RootEditor({ node }: { node: AuiNode }) {
     }
     return result;
   }, [nodes, node.id]);
-
-  const handleAutoFill = useCallback(async () => {
-    if (!projectPath) return;
-    setAutoFilling(true);
-    try {
-      const apiKey = await getApiKey(projectPath);
-      if (!apiKey) {
-        toast("No API key configured. Go to Settings to add one.", "error");
-        setAutoFilling(false);
-        return;
-      }
-
-      const companyContext = description || ownerName || "a software company";
-      const prompt = `You are designing an AI agent team structure for "${companyContext}".
-
-Generate exactly ${teamCount} teams, each with exactly ${agentsPer} agents.
-
-Return ONLY valid JSON in this exact format (no markdown, no explanation):
-{
-  "teams": [
-    {
-      "name": "Team Name",
-      "description": "What this team does",
-      "agents": [
-        { "name": "Agent Name", "description": "What this agent does" }
-      ]
-    }
-  ]
-}
-
-Make team and agent names descriptive and specific to the company context. Use title case for names.`;
-
-      const result = await generateText(apiKey, prompt, { maxTokens: 2048 });
-
-      const jsonMatch = result.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No valid JSON in response");
-      const parsed = JSON.parse(jsonMatch[0]);
-
-      if (!Array.isArray(parsed.teams)) throw new Error("Invalid response format");
-
-      const { createGroupNode: createGroup } = useTreeStore.getState();
-      for (const team of parsed.teams) {
-        createGroup(team.name, team.description, "root");
-        const { nodes: currentNodes } = useTreeStore.getState();
-        let teamId: string | null = null;
-        for (const [id, n] of currentNodes) {
-          if (n.kind === "group" && n.name === team.name && n.parentId === "root") {
-            teamId = id;
-            break;
-          }
-        }
-        if (teamId && Array.isArray(team.agents)) {
-          for (const agent of team.agents) {
-            createGroup(agent.name, agent.description, teamId);
-          }
-        }
-      }
-
-      toast(`Created ${parsed.teams.length} teams with agents`, "success");
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "Auto-fill failed", "error");
-    }
-    setAutoFilling(false);
-  }, [projectPath, ownerName, description, teamCount, agentsPer]);
 
   const handleGenerateFromGoals = useCallback(async () => {
     if (!projectPath || !description.trim()) return;
@@ -539,9 +473,6 @@ Make team and agent names descriptive and specific. Use title case for names. Ea
   const handleSave = useCallback(() => {
     updateNode(node.id, { name: ownerName, promptBody: description, lastModified: Date.now() });
     saveTreeMetadata();
-    const now = Date.now();
-    setSavedAt(now);
-    setTimeout(() => setSavedAt((prev) => (prev === now ? null : prev)), 2000);
   }, [ownerName, description, node.id, updateNode, saveTreeMetadata]);
 
   // Autosave on changes
@@ -689,50 +620,26 @@ Make team and agent names descriptive and specific. Use title case for names. Ea
           </div>
         </div>
         <button
-          onClick={handleAutoFill}
-          disabled={autoFilling}
+          onClick={handleGenerateFromGoals}
+          disabled={generatingGoals || !description.trim()}
           style={{
             width: "100%",
             padding: "9px 16px",
-            marginBottom: 6,
-            background: autoFilling ? "var(--border-color)" : "var(--accent-blue)",
+            marginBottom: 8,
+            background: generatingGoals || !description.trim() ? "var(--border-color)" : "var(--accent-blue)",
             color: "white",
             border: "none",
             borderRadius: 6,
-            cursor: autoFilling ? "default" : "pointer",
+            cursor: generatingGoals || !description.trim() ? "default" : "pointer",
             fontSize: 13,
             fontWeight: 600,
+            opacity: !description.trim() ? 0.5 : 1,
             transition: "opacity 0.15s",
           }}
+          title={!description.trim() ? "Add a description above to generate teams" : ""}
         >
-          {autoFilling ? "Generating..." : `Generate ${teamCount} x ${agentsPer}`}
+          {generatingGoals ? "Generating..." : `Generate ${teamCount} x ${agentsPer} Teams`}
         </button>
-
-        {description.trim() && (
-          <button
-            onClick={handleGenerateFromGoals}
-            disabled={generatingGoals}
-            style={{
-              width: "100%",
-              padding: "9px 16px",
-              marginBottom: 8,
-              background: "transparent",
-              color: generatingGoals ? "var(--text-secondary)" : "var(--accent-orange)",
-              border: `1px solid ${generatingGoals ? "var(--border-color)" : "var(--accent-orange)"}`,
-              borderRadius: 6,
-              cursor: generatingGoals ? "default" : "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
-            {generatingGoals ? "Analyzing Goals..." : "Generate from Description"}
-          </button>
-        )}
-        {!description.trim() && (
-          <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.4, fontStyle: "italic" }}>
-            Add a description above to enable goal-based generation.
-          </div>
-        )}
 
         {/* Team list */}
         {teamChildren.length > 0 && (
@@ -793,30 +700,6 @@ Make team and agent names descriptive and specific. Use title case for names. Ea
         </button>
       </CollapsibleSection>
 
-      {/* Save */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 20 }}>
-        <button
-          onClick={handleSave}
-          style={{
-            flex: 1,
-            padding: "8px 16px",
-            background: "var(--accent-blue)",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          Save
-        </button>
-        {savedAt !== null && (
-          <span style={{ color: "var(--accent-green)", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
-            Saved!
-          </span>
-        )}
-      </div>
     </div>
   );
 }

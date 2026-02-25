@@ -44,8 +44,6 @@ export function SkillEditor({ node }: SkillEditorProps) {
   const [version, setVersion] = useState(cfg.version ?? "");
   const [license, setLicense] = useState(cfg.license ?? "");
   const [promptBody, setPromptBody] = useState(node.promptBody);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-
   useEffect(() => {
     const c = (node.config as SkillConfig | null) ?? { name: node.name };
     setName(c.name);
@@ -53,7 +51,6 @@ export function SkillEditor({ node }: SkillEditorProps) {
     setVersion(c.version ?? "");
     setLicense(c.license ?? "");
     setPromptBody(node.promptBody);
-    setSavedAt(null);
   }, [node.id, node.config, node.promptBody, node.name]);
 
   const resetForm = () => {
@@ -80,12 +77,6 @@ export function SkillEditor({ node }: SkillEditorProps) {
       lastModified: Date.now(),
     });
     saveNode(node.id);
-
-    const now = Date.now();
-    setSavedAt(now);
-    setTimeout(() => {
-      setSavedAt((prev) => (prev === now ? null : prev));
-    }, 2000);
   };
 
   // Autosave on changes
@@ -143,22 +134,6 @@ export function SkillEditor({ node }: SkillEditorProps) {
 
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <button
-          onClick={handleSave}
-          style={{
-            flex: 1,
-            padding: "8px 16px",
-            background: "var(--accent-blue)",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          Save
-        </button>
-        <button
           onClick={resetForm}
           style={{
             padding: "8px 16px",
@@ -173,18 +148,6 @@ export function SkillEditor({ node }: SkillEditorProps) {
         >
           Discard
         </button>
-        {savedAt !== null && (
-          <span
-            style={{
-              color: "var(--accent-green)",
-              fontSize: 12,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Saved!
-          </span>
-        )}
       </div>
     </div>
   );

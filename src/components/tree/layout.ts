@@ -8,6 +8,7 @@ const NODE_HEIGHT = 110;
 export function layoutNodes(
   nodes: Map<string, AuiNode>,
   collapsedIds: Set<string> = new Set(),
+  savedPositions: Record<string, { x: number; y: number }> = {},
 ): {
   flowNodes: Node[];
   flowEdges: Edge[];
@@ -47,14 +48,14 @@ export function layoutNodes(
 
   const flowNodes: Node[] = [];
   for (const [id, node] of visibleNodes) {
-    const pos = g.node(id);
+    const saved = savedPositions[id];
+    const dagrePos = g.node(id);
     flowNodes.push({
       id,
       type: "orgNode",
-      position: {
-        x: pos.x - NODE_WIDTH / 2,
-        y: pos.y - NODE_HEIGHT / 2,
-      },
+      position: saved
+        ? { x: saved.x, y: saved.y }
+        : { x: dagrePos.x - NODE_WIDTH / 2, y: dagrePos.y - NODE_HEIGHT / 2 },
       data: { auiNode: node },
     });
   }

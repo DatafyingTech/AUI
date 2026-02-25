@@ -58,6 +58,9 @@ interface TreeActions {
   deleteLayout(layoutId: string): Promise<void>;
   renameLayout(layoutId: string, newName: string): Promise<void>;
   createBlankLayout(name: string): Promise<string>;
+  saveNodePosition(nodeId: string, pos: { x: number; y: number }): void;
+  saveNodePositions(positions: Record<string, { x: number; y: number }>): void;
+  clearNodePosition(nodeId: string): void;
 }
 
 type TreeStore = TreeState & TreeActions;
@@ -543,6 +546,20 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       next.delete(id);
       return { nodes: next };
     });
+
+    // Clean up saved positions for removed nodes
+    const { metadata } = get();
+    if (metadata?.positions) {
+      const positions = { ...metadata.positions };
+      delete positions[id];
+      if (node.kind === "group") {
+        // Also clean descendant positions
+        for (const key of Object.keys(positions)) {
+          if (!get().nodes.has(key)) delete positions[key];
+        }
+      }
+      set({ metadata: { ...metadata, positions } });
+    }
 
     // Persist updated hierarchy
     get().saveTreeMetadata();
@@ -1633,5 +1650,27 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     });
 
     return layoutId;
+  },
+
+  saveNodePosition(nodeId: string, pos: { x: number; y: number }) {
+    const { metadata } = get();
+    if (!metadata) return;
+    const positions = { ...metadata.positions, [nodeId]: pos };
+    set({ metadata: { ...metadata, positions } });
+  },
+
+  saveNodePositions(positions: Record<string, { x: number; y: number }>) {
+    const { metadata } = get();
+    if (!metadata) return;
+    const merged = { ...metadata.positions, ...positions };
+    set({ metadata: { ...metadata, positions: merged } });
+  },
+
+  clearNodePosition(nodeId: string) {
+    const { metadata } = get();
+    if (!metadata) return;
+    const positions = { ...metadata.positions };
+    delete positions[nodeId];
+    set({ metadata: { ...metadata, positions } });
   },
 }));

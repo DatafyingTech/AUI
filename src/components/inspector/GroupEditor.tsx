@@ -112,7 +112,6 @@ export function GroupEditor({ node }: GroupEditorProps) {
   const [name, setName] = useState(node.name);
   const [description, setDescription] = useState(node.promptBody);
   const [variables, setVariables] = useState(node.variables);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [addSkillId, setAddSkillId] = useState("");
   const [deploying, setDeploying] = useState(false);
   const [deployOutput, setDeployOutput] = useState<string[]>([]);
@@ -135,7 +134,6 @@ export function GroupEditor({ node }: GroupEditorProps) {
     setName(node.name);
     setDescription(node.promptBody);
     setVariables(node.variables);
-    setSavedAt(null);
     setAddSkillId("");
     setShowCreateForm(false);
   }, [node.id, node.name, node.promptBody, node.variables]);
@@ -254,12 +252,6 @@ export function GroupEditor({ node }: GroupEditorProps) {
       lastModified: Date.now(),
     });
     saveTreeMetadata();
-
-    const now = Date.now();
-    setSavedAt(now);
-    setTimeout(() => {
-      setSavedAt((prev) => (prev === now ? null : prev));
-    }, 2000);
   };
 
   // Autosave on changes
@@ -1082,24 +1074,8 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         </button>
       </CollapsibleSection>
 
-      {/* 5. Save/Discard buttons */}
+      {/* Discard */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 24 }}>
-        <button
-          onClick={handleSave}
-          style={{
-            flex: 1,
-            padding: "8px 16px",
-            background: "var(--accent-blue)",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          Save
-        </button>
         <button
           onClick={resetForm}
           style={{
@@ -1115,18 +1091,6 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         >
           Discard
         </button>
-        {savedAt !== null && (
-          <span
-            style={{
-              color: "var(--accent-green)",
-              fontSize: 12,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Saved!
-          </span>
-        )}
       </div>
 
     </div>
