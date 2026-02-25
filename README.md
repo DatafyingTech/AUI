@@ -43,11 +43,11 @@ A full pan/zoom/drag canvas powered by React Flow. Nodes are color-coded by type
 | Sub-Agent   | Light Blue | SUB-AGENT |
 | Skill       | Green      | skill     |
 
-Build your agent hierarchy visually -- drag nodes, rearrange teams, and see the full structure at a glance. Sub-agents (agents nested under other agents) get a distinct lighter-blue treatment so you can instantly tell depth in the hierarchy. Team groups can be collapsed or expanded on the canvas to manage complexity. Hover over any node to reveal quick actions (add child node, remove from canvas), double-click to open the inspector, or right-click for a context menu with additional operations.
+Build your agent hierarchy visually -- drag nodes, rearrange teams, and see the full structure at a glance. Sub-agents (agents nested under other agents) get a distinct lighter-blue treatment so you can instantly tell depth in the hierarchy. Team groups can be collapsed or expanded on the canvas to manage complexity. Hover over any node to reveal quick actions (add child node, remove from canvas), double-click to open the inspector, or right-click for a context menu with additional operations. Hover over any connection line between nodes to reveal a "+" button that lets you insert a new node between an existing parent-child pair. The Layouts dropdown includes a **blank layout** option that clears the canvas down to just the root "You" node, giving you a fresh starting point.
 
 ### Inspector Panel
 
-Click any node to open the side inspector. Edit agent configurations in detail:
+Click any node to open the side inspector. All editors auto-save your changes after a brief pause, so you never lose edits when clicking away -- manual save buttons remain as a fallback. Edit agent configurations in detail:
 
 - **Model selection** -- choose which Claude model each agent uses
 - **Tools and permissions** -- configure what each agent can access

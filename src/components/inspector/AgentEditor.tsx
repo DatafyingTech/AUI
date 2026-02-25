@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, type CSSProperties, type KeyboardEven
 import Editor from "@monaco-editor/react";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { useTreeStore } from "@/store/tree-store";
+import { useAutosave } from "@/hooks/useAutosave";
 import { getApiKey, generateText } from "@/services/claude-api";
 import { toast } from "@/components/common/Toast";
 import type { AuiNode, NodeVariable } from "@/types/aui-node";
@@ -274,6 +275,13 @@ export function AgentEditor({ node }: AgentEditorProps) {
       setSavedAt((prev) => (prev === now ? null : prev));
     }, 2000);
   };
+
+  // Autosave on changes
+  useAutosave(
+    handleSave,
+    [name, description, model, permissionMode, maxTurns, tools, disallowedTools, skills, color, variables, promptBody],
+    node.id,
+  );
 
   const handleValidate = () => {
     const errs: string[] = [];

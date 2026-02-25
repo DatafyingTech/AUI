@@ -23,11 +23,14 @@ export function LayoutsDropdown() {
   const [renameValue, setRenameValue] = useState("");
   const [showNewInput, setShowNewInput] = useState(false);
   const [newName, setNewName] = useState("");
+  const [showBlankInput, setShowBlankInput] = useState(false);
+  const [blankName, setBlankName] = useState("");
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const newInputRef = useRef<HTMLInputElement>(null);
+  const blankInputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -37,6 +40,7 @@ export function LayoutsDropdown() {
         setOpen(false);
         setRenamingId(null);
         setShowNewInput(false);
+        setShowBlankInput(false);
       }
     }
     document.addEventListener("mousedown", handleMouseDown);
@@ -57,6 +61,13 @@ export function LayoutsDropdown() {
       newInputRef.current.focus();
     }
   }, [showNewInput]);
+
+  // Focus blank layout input when it appears
+  useEffect(() => {
+    if (showBlankInput && blankInputRef.current) {
+      blankInputRef.current.focus();
+    }
+  }, [showBlankInput]);
 
   const currentLayout = layouts.find((l) => l.id === currentLayoutId);
   const displayName = currentLayout?.name ?? "Default";
@@ -93,6 +104,16 @@ export function LayoutsDropdown() {
     setNewName("");
     setShowNewInput(false);
   }, [newName]);
+
+  const commitBlankLayout = useCallback(() => {
+    const name = blankName.trim();
+    if (name) {
+      useTreeStore.getState().createBlankLayout(name);
+      setOpen(false);
+    }
+    setBlankName("");
+    setShowBlankInput(false);
+  }, [blankName]);
 
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
@@ -309,8 +330,8 @@ export function LayoutsDropdown() {
             }}
           />
 
-          {/* Save as New Layout */}
-          <div style={{ padding: "8px 12px" }}>
+          {/* Save as New Layout + New Blank Layout */}
+          <div style={{ padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
             {showNewInput ? (
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <input
@@ -392,6 +413,90 @@ export function LayoutsDropdown() {
                 }}
               >
                 Save as New Layout
+              </button>
+            )}
+
+            {showBlankInput ? (
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input
+                  ref={blankInputRef}
+                  value={blankName}
+                  onChange={(e) => setBlankName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitBlankLayout();
+                    if (e.key === "Escape") {
+                      setShowBlankInput(false);
+                      setBlankName("");
+                    }
+                  }}
+                  placeholder="Layout name"
+                  style={{
+                    flex: 1,
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: 4,
+                    color: "var(--text-primary)",
+                    fontSize: 13,
+                    padding: "4px 8px",
+                    outline: "none",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "var(--accent-green, #3fb950)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border-color)";
+                  }}
+                />
+                <button
+                  onClick={commitBlankLayout}
+                  disabled={!blankName.trim()}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 4,
+                    background: blankName.trim()
+                      ? "var(--accent-green, #3fb950)"
+                      : "var(--bg-secondary)",
+                    border: "none",
+                    color: blankName.trim()
+                      ? "#fff"
+                      : "var(--text-secondary)",
+                    cursor: blankName.trim() ? "pointer" : "default",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  Create
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowBlankInput(true)}
+                style={{
+                  width: "100%",
+                  padding: "6px 8px",
+                  borderRadius: 4,
+                  background: "transparent",
+                  border: "1px dashed var(--border-color)",
+                  color: "var(--text-secondary)",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  transition: "all 0.15s ease",
+                  textAlign: "center",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--accent-green, #3fb950)";
+                  e.currentTarget.style.color = "var(--accent-green, #3fb950)";
+                  e.currentTarget.style.background = "rgba(63, 185, 80, 0.06)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border-color)";
+                  e.currentTarget.style.color = "var(--text-secondary)";
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                + New Blank Layout
               </button>
             )}
           </div>

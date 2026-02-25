@@ -3,6 +3,7 @@ import { readTextFile, writeTextFile, exists, mkdir } from "@tauri-apps/plugin-f
 import { invoke } from "@tauri-apps/api/core";
 import { useTreeStore } from "@/store/tree-store";
 import { useUiStore } from "@/store/ui-store";
+import { useAutosave } from "@/hooks/useAutosave";
 import { scanAllSkills, type SkillInfo } from "@/services/skill-scanner";
 import { getApiKey, generateText } from "@/services/claude-api";
 import { toast } from "@/components/common/Toast";
@@ -260,6 +261,9 @@ export function GroupEditor({ node }: GroupEditorProps) {
       setSavedAt((prev) => (prev === now ? null : prev));
     }, 2000);
   };
+
+  // Autosave on changes
+  useAutosave(handleSave, [name, description, variables], node.id);
 
   const resetForm = () => {
     setName(node.name);

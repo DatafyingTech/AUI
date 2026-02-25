@@ -16,6 +16,7 @@ import { useTreeStore } from "@/store/tree-store";
 import { useUiStore } from "@/store/ui-store";
 import { layoutNodes } from "./layout";
 import { OrgNode } from "./OrgNode";
+import { InsertEdge } from "./InsertEdge";
 import { SearchBar } from "@/components/common/SearchBar";
 import { ContextMenu } from "@/components/common/ContextMenu";
 import type { AuiNode } from "@/types/aui-node";
@@ -24,9 +25,10 @@ import { getApiKey, generateText } from "@/services/claude-api";
 import { toast } from "@/components/common/Toast";
 
 const nodeTypes = { orgNode: OrgNode };
+const edgeTypes = { insertEdge: InsertEdge };
 
 const defaultEdgeOptions = {
-  type: "smoothstep" as const,
+  type: "insertEdge" as const,
   style: { stroke: "#3a3a6a", strokeWidth: 1.5 },
 };
 
@@ -440,6 +442,7 @@ export function TreeCanvas() {
         onDoubleClick={onPaneDoubleClick}
         onPaneContextMenu={onPaneContextMenu}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         connectionLineStyle={connectionLineStyle}
         fitView

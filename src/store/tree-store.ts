@@ -57,6 +57,7 @@ interface TreeActions {
   switchLayout(layoutId: string): Promise<void>;
   deleteLayout(layoutId: string): Promise<void>;
   renameLayout(layoutId: string, newName: string): Promise<void>;
+  createBlankLayout(name: string): Promise<string>;
 }
 
 type TreeStore = TreeState & TreeActions;
@@ -514,12 +515,31 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
     set((state) => {
       const next = new Map(state.nodes);
-      // Reparent children to the removed node's parent
-      for (const [childId, childNode] of next) {
-        if (childNode.parentId === id) {
-          next.set(childId, { ...childNode, parentId });
+
+      if (node.kind === "group") {
+        // For group nodes, recursively remove all descendants too
+        function collectDescendants(pid: string): string[] {
+          const ids: string[] = [];
+          for (const [cid, cnode] of next) {
+            if (cnode.parentId === pid) {
+              ids.push(cid);
+              ids.push(...collectDescendants(cid));
+            }
+          }
+          return ids;
+        }
+        for (const descId of collectDescendants(id)) {
+          next.delete(descId);
+        }
+      } else {
+        // For non-group nodes, reparent children to the removed node's parent
+        for (const [childId, childNode] of next) {
+          if (childNode.parentId === id) {
+            next.set(childId, { ...childNode, parentId });
+          }
         }
       }
+
       next.delete(id);
       return { nodes: next };
     });
@@ -1465,31 +1485,32 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       return;
     }
 
-    // c. Reconstruct the node map: start with file-based nodes from the current scan,
-    //    then apply the layout's hierarchy and groups.
-    //    File-based nodes (agents, skills, context) stay the same — only grouping changes.
-    const { nodes: currentNodes } = get();
+    // c. Reconstruct the node map by re-scanning files from disk.
+    //    This ensures file-based nodes are always present even if the
+    //    current node map was sparse (e.g., coming from a blank layout).
+    const filePaths = await scanProject(projectPath);
     const next = new Map<string, AuiNode>();
 
-    // Keep the root node
-    const root = currentNodes.get("root");
-    if (root) {
-      // Update root with the target layout's owner info
-      next.set("root", {
-        ...root,
-        name: targetMeta.owner?.name ?? root.name,
-      });
-    }
+    // Root node with the target layout's owner info
+    const ownerName = targetMeta.owner?.name ?? "Kevin";
+    next.set("root", createRootNode(ownerName));
 
-    // Copy all file-based nodes (non-group), applying the target layout's hierarchy
-    for (const [id, node] of currentNodes) {
-      if (id === "root") continue;
-      if (node.kind === "group") continue; // Groups come from the layout
+    // Parse all discovered files and apply the target layout's hierarchy
+    for (const filePath of filePaths) {
+      const kind = classifyFile(filePath);
+      if (!kind || kind === "settings") continue;
 
-      const newParentId = targetMeta.hierarchy[id] !== undefined
-        ? targetMeta.hierarchy[id]
-        : node.parentId;
-      next.set(id, { ...node, parentId: newParentId });
+      try {
+        const node = await parseFile(filePath, kind);
+        if (node) {
+          node.parentId = targetMeta.hierarchy[node.id] !== undefined
+            ? targetMeta.hierarchy[node.id]
+            : "root";
+          next.set(node.id, node);
+        }
+      } catch {
+        // Skip unparseable files
+      }
     }
 
     // Restore group nodes from the target layout
@@ -1564,5 +1585,53 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     });
 
     set({ layouts: updatedLayouts });
+  },
+
+  async createBlankLayout(name: string): Promise<string> {
+    const { projectPath, currentLayoutId } = get();
+    if (!projectPath) throw new Error("No project loaded");
+
+    const layoutId = `layout-${Date.now()}`;
+
+    // Save current tree state to the current layout first
+    await get().saveTreeMetadata();
+    const { metadata: currentMeta } = get();
+    if (currentMeta && currentLayoutId) {
+      await saveLayout(projectPath, currentLayoutId, currentMeta);
+    }
+
+    // Create blank metadata with only the root node
+    const blankMeta: TreeMetadata = {
+      owner: get().metadata?.owner ?? { name: "Kevin", description: "" },
+      hierarchy: {},
+      positions: {},
+      groups: undefined,
+      lastModified: Date.now(),
+    };
+
+    // Save the blank layout file
+    await saveLayout(projectPath, layoutId, blankMeta);
+
+    // Update the index
+    const { layouts } = get();
+    const newEntry = { id: layoutId, name, lastModified: Date.now() };
+    const updatedLayouts = [...layouts, newEntry];
+    await saveLayoutIndex(projectPath, {
+      activeLayoutId: layoutId,
+      layouts: updatedLayouts,
+    });
+
+    // Switch to blank canvas: only the root node with a clean slate
+    const next = new Map<string, AuiNode>();
+    next.set("root", createRootNode(blankMeta.owner?.name ?? "You"));
+
+    set({
+      nodes: next,
+      currentLayoutId: layoutId,
+      metadata: blankMeta,
+      layouts: updatedLayouts,
+    });
+
+    return layoutId;
   },
 }));

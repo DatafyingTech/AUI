@@ -1,6 +1,7 @@
 import { useState, useEffect, type CSSProperties } from "react";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { useTreeStore } from "@/store/tree-store";
+import { useAutosave } from "@/hooks/useAutosave";
 import type { AuiNode } from "@/types/aui-node";
 import type { SkillConfig } from "@/types/skill";
 
@@ -86,6 +87,9 @@ export function SkillEditor({ node }: SkillEditorProps) {
       setSavedAt((prev) => (prev === now ? null : prev));
     }, 2000);
   };
+
+  // Autosave on changes
+  useAutosave(handleSave, [name, description, version, license, promptBody], node.id);
 
   return (
     <div>

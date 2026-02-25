@@ -70,7 +70,14 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 
   selectNode(id: string | null) {
     if (id !== null) {
-      set({ selectedNodeId: id, inspectorOpen: true });
+      set({
+        selectedNodeId: id,
+        inspectorOpen: true,
+        // Close overlay panels so the inspector is visible
+        settingsOpen: false,
+        scheduleOpen: false,
+        contextHubOpen: false,
+      });
     } else {
       set({ selectedNodeId: null });
     }

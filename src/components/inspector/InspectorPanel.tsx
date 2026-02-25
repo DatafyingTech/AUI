@@ -6,6 +6,7 @@ import { SkillEditor } from "./SkillEditor";
 import { GroupEditor } from "./GroupEditor";
 import { SettingsEditor } from "./SettingsEditor";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { useAutosave } from "@/hooks/useAutosave";
 import { scanAllSkills, type SkillInfo } from "@/services/skill-scanner";
 import { getApiKey, generateText } from "@/services/claude-api";
 import { toast } from "@/components/common/Toast";
@@ -542,6 +543,9 @@ Make team and agent names descriptive and specific. Use title case for names. Ea
     setSavedAt(now);
     setTimeout(() => setSavedAt((prev) => (prev === now ? null : prev)), 2000);
   }, [ownerName, description, node.id, updateNode, saveTreeMetadata]);
+
+  // Autosave on changes
+  useAutosave(handleSave, [ownerName, description], node.id);
 
   const handleAddSkill = () => {
     if (!addSkillId) return;

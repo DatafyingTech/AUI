@@ -36,7 +36,7 @@ export function layoutNodes(
         id: `e-${node.parentId}-${id}`,
         source: node.parentId,
         target: id,
-        type: "smoothstep",
+        type: "insertEdge",
         style: { stroke: "#3a3a6a", strokeWidth: 1.5 },
         animated: isFirstLevel,
       });

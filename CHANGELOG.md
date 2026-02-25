@@ -1,5 +1,25 @@
 # AUI (Agent UI) — Changelog
 
+## v0.4.0 — February 25, 2026
+
+### New Features
+- **Autosave across all editors** — changes to any node (You, Team, Agent, Skill) now save automatically after 800ms of idle typing and on click-away. No more losing changes because you forgot to hit Save. Manual Save buttons remain for explicit saves
+- **Blank layout creation** — the Layouts dropdown now has a "+ New Blank Layout" button that creates a fresh canvas with only the "You" node, perfect for building a new org structure from scratch without existing clutter
+- **Edge insert button** — hover over any edge (connection line) between two nodes to reveal a "+" button. Click it to insert a new node at that position in the hierarchy, making it easy to add nodes between existing parent-child pairs
+
+### Bug Fixes
+- **Fixed team deletion spawning random nodes** — removing a team node from the canvas (via the X button) no longer causes its child agents to appear at root level. Children are now recursively removed with the team, keeping the canvas clean
+- **Fixed blank layout inheriting previous description** — new blank layouts now start with a truly fresh root node instead of carrying over the previous layout's "You" node description
+
+### Technical
+- New `src/hooks/useAutosave.ts` — reusable hook with debounce, skip-on-init, and flush-on-unmount for all editor components
+- New `src/components/tree/InsertEdge.tsx` — custom React Flow edge component with hover-activated insert button
+- `removeNodeFromCanvas` now recursively removes all descendants when removing a group node (teams), while preserving the reparent behavior for individual nodes
+- `createBlankLayout` added to tree store — saves current layout, creates empty metadata, switches to blank canvas
+- All 4 editor components (RootEditor, AgentEditor, SkillEditor, GroupEditor) wired with `useAutosave` hook
+
+---
+
 ## v0.3.9 — February 24, 2026
 
 ### QA & Polish
