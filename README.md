@@ -96,6 +96,8 @@ Write a brief objective and click Deploy. ATM compiles everything -- your org st
 Claude receives a comprehensive briefing with complete context about your company, every team member's skills, all necessary credentials, and clear objectives. No token waste on back-and-forth clarification. No missing context. Your AI workforce executes with the full picture from the first message.
 
 ---
+### Video Demo
+https://youtu.be/YhwVby25sJ8
 
 ## Screenshots
 
