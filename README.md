@@ -40,7 +40,6 @@ Define variables at any level of your org -- root, team, or agent -- and they ca
 
 Chain multiple teams into ordered workflows. A Project Manager node lets you define sequential steps -- Team 1 runs to completion, then Team 2 starts, then Team 3 follows. Each step has its own deployment objective. Hit **Play All** to execute the entire pipeline in a single terminal session, or **Schedule** it to run on a recurring basis. The same team can appear in multiple steps with different objectives.
 
-<img width="468" height="965" alt="7" src="https://github.com/user-attachments/assets/5c355b1d-0744-46db-af89-09506693d31c" />
 
 ### Visual Org Chart
 
@@ -119,6 +118,8 @@ Claude receives a comprehensive briefing with complete context about your compan
 <img width="1907" height="998" alt="Screenshot 2026-02-24 161224" src="https://github.com/user-attachments/assets/3c4cef4a-14bd-4fd6-975d-07584b3e1a01" />
 
 ---
+## New Multi Team Scheduling Feature
+<img width="468" height="965" alt="7" src="https://github.com/user-attachments/assets/5c355b1d-0744-46db-af89-09506693d31c" />
 
 ## At a Glance
 
