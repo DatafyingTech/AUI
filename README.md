@@ -8,10 +8,12 @@
 
 **Stop writing prompts. Start managing teams.**
 
-ATM is a desktop application that turns hours of manual Claude Code configuration into a visual, repeatable workflow. Design AI teams on a drag-and-drop org chart, assign typed variables with sensitive value masking, chain teams into multi-step pipelines, and deploy entire departments to work -- all without writing a single line of YAML, JSON, or markdown by hand.
+Stop managing AI agents in scattered markdown files. ATM (Agent Team Manager) is a free, open-source desktop app that gives you a visual org chart for your entire Claude Code workforce.
+Build teams. Assign skills. Deploy pipelines. All from a drag-and-drop canvas.
 
-If you have ever spent 30 minutes hand-crafting a deployment prompt, manually wiring agent configs, or copy-pasting API keys across a dozen files, ATM eliminates all of that.
-
+---
+### Video Demo
+https://youtu.be/YhwVby25sJ8
 ---
 
 ## What ATM Replaces
@@ -94,10 +96,6 @@ Write a brief objective and click Deploy. ATM compiles everything -- your org st
 ### 4. Claude Does the Work
 
 Claude receives a comprehensive briefing with complete context about your company, every team member's skills, all necessary credentials, and clear objectives. No token waste on back-and-forth clarification. No missing context. Your AI workforce executes with the full picture from the first message.
-
----
-### Video Demo
-https://youtu.be/YhwVby25sJ8
 
 ## Screenshots
 
