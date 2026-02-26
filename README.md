@@ -46,7 +46,7 @@ Chain multiple teams into ordered workflows. A Project Manager node lets you def
 
 Design your AI workforce on a full pan/zoom/drag canvas. Nodes are color-coded by role -- gold for You (the CEO), blue for Teams, orange for Agents, light blue for Sub-Agents, magenta for Project Managers, and green for Skills. Collapse and expand entire departments. Right-click any node for a context menu with **Move to...** reparenting that lists every valid target. Hover over connection lines to insert new nodes between existing pairs. The org chart is not decoration -- it directly defines the team structure that gets deployed.
 
-<img width="1908" height="1000" alt="4" src="https://github.com/user-attachments/assets/65ac7e74-733c-4de2-9533-43bf9c674a09" />
+<img width="1909" height="997" alt="agents" src="https://github.com/user-attachments/assets/40981b99-6cc8-4875-a1b6-ee1817c86df7" />
 
 
 ### One-Click Deploy
