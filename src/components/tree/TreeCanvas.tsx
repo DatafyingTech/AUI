@@ -10,6 +10,7 @@ import {
   type Edge,
   type NodeMouseHandler,
   type Connection,
+  type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useTreeStore } from "@/store/tree-store";
@@ -161,13 +162,42 @@ export function TreeCanvas() {
     [filteredNodes, collapsedGroups],
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [nodes, setNodes, onNodesChangeRaw] = useNodesState<Node>([]);
   const [edges, setEdges] = useEdgesState<Edge>([]);
 
+  // Filter out React Flow's selection changes — we manage selection via multiSelectedNodeIds
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const filtered = changes.filter((c) => c.type !== "select");
+      if (filtered.length > 0) onNodesChangeRaw(filtered);
+    },
+    [onNodesChangeRaw],
+  );
+
+  // Sync layout nodes into React Flow state (with current multi-select applied)
   useEffect(() => {
-    setNodes(flowNodes);
+    const ms = useUiStore.getState().multiSelectedNodeIds;
+    setNodes(
+      ms.size > 0
+        ? flowNodes.map((n) => ({ ...n, selected: ms.has(n.id) }))
+        : flowNodes,
+    );
     setEdges(flowEdges);
   }, [flowNodes, flowEdges, setNodes, setEdges]);
+
+  // Sync multiSelectedNodeIds → React Flow node.selected (enables built-in multi-drag)
+  useEffect(() => {
+    setNodes((nds) => {
+      let changed = false;
+      const result = nds.map((n) => {
+        const shouldBeSelected = multiSelectedNodeIds.has(n.id);
+        if (n.selected === shouldBeSelected) return n;
+        changed = true;
+        return { ...n, selected: shouldBeSelected };
+      });
+      return changed ? result : nds;
+    });
+  }, [multiSelectedNodeIds, setNodes]);
 
   const onNodeClick: NodeMouseHandler = useCallback(
     (event, node) => {
@@ -180,6 +210,10 @@ export function TreeCanvas() {
     },
     [selectNode, toggleMultiSelect, clearMultiSelect],
   );
+
+  // Undo stack for Ctrl+Z position restore
+  const undoStackRef = useRef<Record<string, { x: number; y: number }>[]>([]);
+  const MAX_UNDO = 20;
 
   // Track group drag start positions so children follow
   const dragStartRef = useRef<{
@@ -204,27 +238,38 @@ export function TreeCanvas() {
   );
 
   const onNodeDragStart = useCallback(
-    (_event: React.MouseEvent, draggedNode: Node) => {
+    (_event: React.MouseEvent, draggedNode: Node, draggedNodes: Node[]) => {
+      // Capture before-positions for undo (all nodes that will move)
+      const beforePositions: Record<string, { x: number; y: number }> = {};
+      for (const n of draggedNodes) {
+        beforePositions[n.id] = { x: n.position.x, y: n.position.y };
+      }
+      beforePositions[draggedNode.id] = { x: draggedNode.position.x, y: draggedNode.position.y };
+
       const auiNode = treeNodes.get(draggedNode.id);
-      if (!auiNode || (auiNode.kind !== "group" && auiNode.kind !== "pipeline")) {
-        dragStartRef.current = null;
-        return;
-      }
-
-      // Capture starting positions of all descendants
-      const descendantIds = new Set(getDescendantIds(draggedNode.id));
-      const childPositions = new Map<string, { x: number; y: number }>();
-      for (const n of nodes) {
-        if (descendantIds.has(n.id)) {
-          childPositions.set(n.id, { x: n.position.x, y: n.position.y });
+      if (auiNode && (auiNode.kind === "group" || auiNode.kind === "pipeline")) {
+        // Capture starting positions of all descendants (for group child-dragging)
+        const descendantIds = new Set(getDescendantIds(draggedNode.id));
+        const childPositions = new Map<string, { x: number; y: number }>();
+        for (const n of nodes) {
+          if (descendantIds.has(n.id)) {
+            childPositions.set(n.id, { x: n.position.x, y: n.position.y });
+            beforePositions[n.id] = { x: n.position.x, y: n.position.y };
+          }
         }
+
+        dragStartRef.current = {
+          parentId: draggedNode.id,
+          startPos: { x: draggedNode.position.x, y: draggedNode.position.y },
+          childPositions,
+        };
+      } else {
+        dragStartRef.current = null;
       }
 
-      dragStartRef.current = {
-        parentId: draggedNode.id,
-        startPos: { x: draggedNode.position.x, y: draggedNode.position.y },
-        childPositions,
-      };
+      // Push to undo stack
+      undoStackRef.current.push(beforePositions);
+      if (undoStackRef.current.length > MAX_UNDO) undoStackRef.current.shift();
     },
     [treeNodes, nodes, getDescendantIds],
   );
@@ -256,44 +301,44 @@ export function TreeCanvas() {
 
   // Drag-drop reparenting + position persistence
   const onNodeDragStop = useCallback(
-    (_event: React.MouseEvent, draggedNode: Node) => {
+    (_event: React.MouseEvent, draggedNode: Node, draggedNodes: Node[]) => {
       const dragRef = dragStartRef.current;
       const wasGroupDrag = dragRef?.parentId === draggedNode.id;
       dragStartRef.current = null;
+
       if (draggedNode.id === "root") {
-        // Save root position
         useTreeStore.getState().saveNodePosition("root", { x: draggedNode.position.x, y: draggedNode.position.y });
         useTreeStore.getState().saveTreeMetadata();
         return;
       }
 
-      // Check proximity to other nodes for reparenting
-      const PROXIMITY = 60;
-      for (const otherNode of nodes) {
-        if (otherNode.id === draggedNode.id) continue;
-        const dx = Math.abs(draggedNode.position.x - otherNode.position.x);
-        const dy = Math.abs(draggedNode.position.y - otherNode.position.y);
-        if (dx < PROXIMITY && dy < PROXIMITY) {
-          // Reparenting — clear saved position so dagre places it under new parent
-          useTreeStore.getState().clearNodePosition(draggedNode.id);
-          reparentNode(draggedNode.id, otherNode.id);
-          return;
+      // Only do proximity reparenting for single-node drag (not multi-select)
+      if (draggedNodes.length <= 1) {
+        const PROXIMITY = 60;
+        for (const otherNode of nodes) {
+          if (otherNode.id === draggedNode.id) continue;
+          const dx = Math.abs(draggedNode.position.x - otherNode.position.x);
+          const dy = Math.abs(draggedNode.position.y - otherNode.position.y);
+          if (dx < PROXIMITY && dy < PROXIMITY) {
+            useTreeStore.getState().clearNodePosition(draggedNode.id);
+            reparentNode(draggedNode.id, otherNode.id);
+            return;
+          }
         }
       }
 
-      // No reparenting — save position(s)
+      // Save positions for all dragged nodes
+      const batch: Record<string, { x: number; y: number }> = {};
+      for (const n of draggedNodes) {
+        batch[n.id] = { x: n.position.x, y: n.position.y };
+      }
+
+      // If group drag, also handle children and hidden descendants
       if (wasGroupDrag && dragRef) {
-        // Group drag: save positions for the group + all visible descendants,
-        // AND offset hidden (collapsed) descendants' saved positions by the drag delta
         const descendantIds = new Set(getDescendantIds(draggedNode.id));
         const dx = draggedNode.position.x - dragRef.startPos.x;
         const dy = draggedNode.position.y - dragRef.startPos.y;
 
-        const batch: Record<string, { x: number; y: number }> = {
-          [draggedNode.id]: { x: draggedNode.position.x, y: draggedNode.position.y },
-        };
-
-        // Visible descendants: use their current React Flow positions
         const visibleIds = new Set<string>();
         for (const n of nodes) {
           if (descendantIds.has(n.id)) {
@@ -302,7 +347,6 @@ export function TreeCanvas() {
           }
         }
 
-        // Hidden descendants (collapsed): offset their saved positions by the drag delta
         const currentPositions = useTreeStore.getState().metadata?.positions ?? {};
         for (const id of descendantIds) {
           if (!visibleIds.has(id) && currentPositions[id]) {
@@ -312,11 +356,9 @@ export function TreeCanvas() {
             };
           }
         }
-
-        useTreeStore.getState().saveNodePositions(batch);
-      } else {
-        useTreeStore.getState().saveNodePosition(draggedNode.id, { x: draggedNode.position.x, y: draggedNode.position.y });
       }
+
+      useTreeStore.getState().saveNodePositions(batch);
       useTreeStore.getState().saveTreeMetadata();
     },
     [nodes, reparentNode, getDescendantIds],
@@ -363,23 +405,43 @@ export function TreeCanvas() {
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
       if (e.key === "Delete" || e.key === "Backspace") {
         const nodeId = useUiStore.getState().selectedNodeId;
         if (nodeId && nodeId !== "root") {
-          // Don't trigger when typing in inputs
-          const tag = (e.target as HTMLElement)?.tagName;
-          if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+          if (isInput) return;
           const name = useTreeStore.getState().removeNodeFromCanvas(nodeId);
           if (name) toast(`Removed ${name} from canvas`, "info");
         }
       }
       if (e.key === "Escape") {
         selectNode(null);
+        clearMultiSelect();
+      }
+      // Ctrl+Z: undo last position move
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        if (isInput) return;
+        e.preventDefault();
+        const last = undoStackRef.current.pop();
+        if (last) {
+          setNodes((nds) =>
+            nds.map((n) => {
+              const saved = last[n.id];
+              if (saved) return { ...n, position: saved };
+              return n;
+            }),
+          );
+          useTreeStore.getState().saveNodePositions(last);
+          useTreeStore.getState().saveTreeMetadata();
+          toast("Undo: positions restored", "info");
+        }
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [selectNode]);
+  }, [selectNode, clearMultiSelect, setNodes]);
 
   // Context menu items
   const contextMenuItems = useMemo(() => {

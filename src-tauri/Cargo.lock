@@ -106,7 +106,7 @@ dependencies = [
 
 [[package]]
 name = "atm"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "log",
  "serde",

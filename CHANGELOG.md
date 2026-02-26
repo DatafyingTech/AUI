@@ -1,5 +1,20 @@
 # ATM (Agent Team Manager) — Changelog
 
+## v0.6.2 — February 25, 2026
+
+### Bug Fix: Multi-Select Drag
+- **Multi-node drag works correctly** — selecting 4+ nodes with Ctrl+Click then dragging now moves all selected nodes together. Previously only the clicked node moved because React Flow's internal `selected` state wasn't synced with ATM's multi-select tracking
+- **Selection state sync** — `multiSelectedNodeIds` from ui-store is now synced to React Flow's `node.selected` property, enabling built-in multi-drag behavior
+- **Filtered selection changes** — React Flow's automatic selection changes are filtered out to prevent conflicts with manual Ctrl+Click selection
+- **Proximity reparenting skipped for multi-drag** — drag-drop reparenting is disabled when dragging multiple nodes to prevent accidental reparenting
+
+### New Feature: Ctrl+Z Undo for Position Moves
+- **Position undo** — pressing Ctrl+Z restores nodes to their previous positions after a drag move
+- **Undo stack** — up to 20 moves are tracked, including multi-select drags and group drags with children
+- **Escape clears selection** — pressing Escape now also clears multi-select (previously only cleared single select)
+
+---
+
 ## v0.6.1 — February 25, 2026
 
 ### Pipeline Deploy Overhaul: Inter-Step Handoffs
