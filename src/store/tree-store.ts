@@ -791,7 +791,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       lines.push(`$totalElapsed = (Get-Date) - $startTime`);
       lines.push(`Write-Host "================================================================" -ForegroundColor Cyan`);
       lines.push(`if ($failed) {`);
-      lines.push(`  Write-Host "  PIPELINE FAILED — check output above" -ForegroundColor Red`);
+      lines.push(`  Write-Host "  PIPELINE FAILED -- check output above" -ForegroundColor Red`);
       lines.push(`} else {`);
       lines.push(`  Write-Host "  PIPELINE COMPLETE" -ForegroundColor Green`);
       lines.push(`}`);
@@ -801,7 +801,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       lines.push(`Read-Host "Press Enter to close"`);
 
       const scriptPath = join(pipelineDir, "deploy.ps1");
-      await writeTextFile(scriptPath, lines.join("\r\n"));
+      await writeTextFile(scriptPath, "\uFEFF" + lines.join("\r\n"));
       const winScriptPath = scriptPath.replace(/\//g, "\\");
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("open_terminal", { scriptPath: winScriptPath });
@@ -848,7 +848,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       lines.push(`TOTAL_ELAPSED=$(( $(date +%s) - START_TIME ))`);
       lines.push(`echo '================================================================'`);
       lines.push(`if [ $FAILED -ne 0 ]; then`);
-      lines.push(`  echo '  PIPELINE FAILED — check output above'`);
+      lines.push(`  echo '  PIPELINE FAILED -- check output above'`);
       lines.push(`else`);
       lines.push(`  echo '  PIPELINE COMPLETE'`);
       lines.push(`fi`);

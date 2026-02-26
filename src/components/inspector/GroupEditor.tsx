@@ -516,7 +516,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
           `Write-Host ''`,
           `Read-Host 'Press Enter to close'`,
         ].join("\r\n");
-        await writeTextFile(scriptPath, ps1Content);
+        await writeTextFile(scriptPath, "\uFEFF" + ps1Content);
         await invoke("open_terminal", { scriptPath: winScriptPath });
       } else {
         // macOS / Linux: write a shell script

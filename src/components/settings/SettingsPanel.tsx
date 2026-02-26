@@ -1,6 +1,7 @@
 import { useState, useEffect, type CSSProperties } from "react";
 import { readTextFile, writeTextFile, exists, mkdir } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { getVersion } from "@tauri-apps/api/app";
 import { useUiStore } from "@/store/ui-store";
 import { useTreeStore } from "@/store/tree-store";
 import { join } from "@/utils/paths";
@@ -64,6 +65,11 @@ export function SettingsPanel() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(false);
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [version, setVersion] = useState("0.6.3");
+
+  useEffect(() => {
+    getVersion().then(v => setVersion(v)).catch(() => {});
+  }, []);
 
   // Load settings on open
   useEffect(() => {
@@ -180,7 +186,7 @@ export function SettingsPanel() {
             >
               <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Version</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                ATM v0.6.2
+                {`ATM v${version}`}
               </span>
             </div>
 
