@@ -548,24 +548,22 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       pipelineSteps: [],
     };
 
+    // Atomic: add node + position near parent in one state update
     set((state) => {
       const next = new Map(state.nodes);
       next.set(id, node);
-      return { nodes: next };
-    });
 
-    // Position near parent
-    const { metadata } = get();
-    if (metadata) {
-      const parentPos = metadata.positions[resolvedParent];
-      if (parentPos) {
-        const siblingCount = Array.from(get().nodes.values()).filter(
+      const parentPos = state.metadata?.positions?.[resolvedParent];
+      if (parentPos && state.metadata) {
+        const siblingCount = Array.from(next.values()).filter(
           (n) => n.parentId === resolvedParent && n.id !== id,
         ).length;
         const pos = { x: parentPos.x + (siblingCount % 3) * 300, y: parentPos.y + 160 };
-        get().saveNodePosition(id, pos);
+        return { nodes: next, metadata: { ...state.metadata, positions: { ...state.metadata.positions, [id]: pos } } };
       }
-    }
+
+      return { nodes: next };
+    });
   },
 
   async createSkillNode(name: string, description: string, parentId?: string) {
@@ -603,24 +601,22 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       pipelineSteps: [],
     };
 
+    // Atomic: add node + position near parent in one state update
     set((state) => {
       const next = new Map(state.nodes);
       next.set(id, node);
-      return { nodes: next };
-    });
 
-    // Position near parent
-    const { metadata } = get();
-    if (metadata) {
-      const parentPos = metadata.positions[resolvedParent];
-      if (parentPos) {
-        const siblingCount = Array.from(get().nodes.values()).filter(
+      const parentPos = state.metadata?.positions?.[resolvedParent];
+      if (parentPos && state.metadata) {
+        const siblingCount = Array.from(next.values()).filter(
           (n) => n.parentId === resolvedParent && n.id !== id,
         ).length;
         const pos = { x: parentPos.x + (siblingCount % 3) * 300, y: parentPos.y + 160 };
-        get().saveNodePosition(id, pos);
+        return { nodes: next, metadata: { ...state.metadata, positions: { ...state.metadata.positions, [id]: pos } } };
       }
-    }
+
+      return { nodes: next };
+    });
   },
 
   createGroupNode(name: string, description: string, parentId?: string) {
@@ -644,25 +640,22 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       pipelineSteps: [],
     };
 
+    // Atomic: add node + position near parent in one state update
     set((state) => {
       const next = new Map(state.nodes);
       next.set(id, node);
-      return { nodes: next };
-    });
 
-    // Position near parent so new node doesn't fly off to distant dagre coordinates
-    const { metadata } = get();
-    if (metadata) {
-      const parentPos = metadata.positions[resolvedParent];
-      if (parentPos) {
-        // Count existing siblings for offset
-        const siblingCount = Array.from(get().nodes.values()).filter(
+      const parentPos = state.metadata?.positions?.[resolvedParent];
+      if (parentPos && state.metadata) {
+        const siblingCount = Array.from(next.values()).filter(
           (n) => n.parentId === resolvedParent && n.id !== id,
         ).length;
         const pos = { x: parentPos.x + (siblingCount % 3) * 300, y: parentPos.y + 160 };
-        get().saveNodePosition(id, pos);
+        return { nodes: next, metadata: { ...state.metadata, positions: { ...state.metadata.positions, [id]: pos } } };
       }
-    }
+
+      return { nodes: next };
+    });
 
     get().saveTreeMetadata();
   },
@@ -688,24 +681,22 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       pipelineSteps: [],
     };
 
+    // Atomic: add node + position near parent in one state update
     set((state) => {
       const next = new Map(state.nodes);
       next.set(id, node);
-      return { nodes: next };
-    });
 
-    // Position near parent
-    const { metadata } = get();
-    if (metadata) {
-      const parentPos = metadata.positions[resolvedParent];
-      if (parentPos) {
-        const siblingCount = Array.from(get().nodes.values()).filter(
+      const parentPos = state.metadata?.positions?.[resolvedParent];
+      if (parentPos && state.metadata) {
+        const siblingCount = Array.from(next.values()).filter(
           (n) => n.parentId === resolvedParent && n.id !== id,
         ).length;
         const pos = { x: parentPos.x + (siblingCount % 3) * 300, y: parentPos.y + 160 };
-        get().saveNodePosition(id, pos);
+        return { nodes: next, metadata: { ...state.metadata, positions: { ...state.metadata.positions, [id]: pos } } };
       }
-    }
+
+      return { nodes: next };
+    });
 
     get().saveTreeMetadata();
   },
