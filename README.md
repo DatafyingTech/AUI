@@ -148,6 +148,26 @@ Claude receives a comprehensive briefing with complete context about your compan
 
 ---
 
+## Changelog
+
+### v0.6.5 (2026-02-26)
+- **Fixed:** AI-generated descriptions (via Generate button) now auto-save when clicking to another node
+- **Fixed:** New nodes (teams, agents, skills, pipelines) appear directly below their parent instead of at a random distant position
+- **Fixed:** Skill name resolution uses comprehensive lookup map from all sources (live nodes + persisted cache)
+- **Added:** Diagnostic logging for skill load tracking
+- **Added:** Node duplication via Ctrl+C/V/D and right-click context menu
+
+### v0.6.4
+- **Added:** Copy/paste/duplicate entire team subtrees
+- **Fixed:** Pipeline schedules run deploy script directly instead of placeholder primer
+- **Fixed:** PowerShell deploy scripts use UTF-8 BOM encoding
+
+### v0.6.3
+- **Fixed:** Pipeline deploy.ps1 encoding issues
+- **Added:** Dynamic version display in UI
+
+---
+
 ## Getting Started
 
 ### Download (Recommended)
