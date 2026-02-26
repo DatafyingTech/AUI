@@ -438,6 +438,44 @@ export function TreeCanvas() {
           toast("Undo: positions restored", "info");
         }
       }
+      // Ctrl+C: copy selected node
+      if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+        if (isInput) return;
+        const nodeId = useUiStore.getState().selectedNodeId;
+        if (nodeId && nodeId !== "root") {
+          e.preventDefault();
+          useTreeStore.getState().copyNodes(nodeId);
+          const name = useTreeStore.getState().nodes.get(nodeId)?.name;
+          if (name) toast(`Copied ${name}`, "info");
+        }
+      }
+      // Ctrl+V: paste from clipboard
+      if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+        if (isInput) return;
+        const nodeId = useUiStore.getState().selectedNodeId;
+        const parentId = nodeId ?? "root";
+        e.preventDefault();
+        useTreeStore.getState().pasteNodes(parentId).then((newId) => {
+          if (newId) {
+            const name = useTreeStore.getState().nodes.get(newId)?.name;
+            toast(`Pasted ${name ?? "node"}`, "success");
+          }
+        });
+      }
+      // Ctrl+D: duplicate selected node
+      if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+        if (isInput) return;
+        const nodeId = useUiStore.getState().selectedNodeId;
+        if (nodeId && nodeId !== "root") {
+          e.preventDefault();
+          useTreeStore.getState().duplicateNodes(nodeId).then((newId) => {
+            if (newId) {
+              const name = useTreeStore.getState().nodes.get(newId)?.name;
+              toast(`Duplicated ${name ?? "node"}`, "success");
+            }
+          });
+        }
+      }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -503,6 +541,25 @@ export function TreeCanvas() {
       {
         label: "Add Child Node",
         onClick: () => useUiStore.getState().openCreateDialog(nodeId),
+      },
+      {
+        label: "Duplicate",
+        onClick: () => {
+          useTreeStore.getState().duplicateNodes(nodeId).then((newId) => {
+            if (newId) {
+              const name = useTreeStore.getState().nodes.get(newId)?.name;
+              toast(`Duplicated ${name ?? "node"}`, "success");
+            }
+          });
+        },
+      },
+      {
+        label: "Copy",
+        onClick: () => {
+          useTreeStore.getState().copyNodes(nodeId);
+          const name = treeNodes.get(nodeId)?.name;
+          if (name) toast(`Copied ${name}`, "info");
+        },
       },
       ...(moveTargets.length > 0
         ? [

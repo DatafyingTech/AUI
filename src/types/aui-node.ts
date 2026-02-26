@@ -79,6 +79,7 @@ export interface TreeMetadata {
     pipelineSteps?: PipelineStep[];
   }>;
   lastModified: number;
+  skillNameCache?: Record<string, string>;
 }
 
 export interface Layout {

@@ -104,6 +104,7 @@ export async function createSchedule(
   repeat: string,
   primerContent: string,
   prompt: string,
+  deployScriptPath?: string,
 ): Promise<ScheduleRecord> {
   const auiDir = join(projectPath, ".aui");
   const schedulesDir = join(auiDir, "schedules");
@@ -126,21 +127,35 @@ export async function createSchedule(
   if (isWindows) {
     // Write a .ps1 script
     scriptPath = join(schedulesDir, `${taskName}.ps1`);
-    const winPrimerPath = primerPath.replace(/\//g, "\\");
-    const escapedPrimerPath = winPrimerPath.replace(/'/g, "''");
     const escapedName = teamName.replace(/'/g, "''");
-    const ps1Content = [
-      `Remove-Item Env:CLAUDECODE -ErrorAction SilentlyContinue`,
-      `Write-Host 'Scheduled deployment: ${escapedName}' -ForegroundColor Cyan`,
-      `Write-Host 'Primer: ${escapedPrimerPath}' -ForegroundColor Yellow`,
-      `Write-Host 'Starting Claude...' -ForegroundColor Green`,
-      `try {`,
-      `  claude --dangerously-skip-permissions "Read the deployment primer at '${escapedPrimerPath}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`,
-      `} catch {`,
-      `  Write-Host "Error: $_" -ForegroundColor Red`,
-      `}`,
-    ].join("\r\n");
-    await writeTextFile(scriptPath, ps1Content);
+    let ps1Content: string;
+
+    if (deployScriptPath) {
+      // Pipeline: run deploy script directly (no Claude intermediary)
+      const winDeployPath = deployScriptPath.replace(/\//g, "\\").replace(/'/g, "''");
+      ps1Content = [
+        `Remove-Item Env:CLAUDECODE -ErrorAction SilentlyContinue`,
+        `Write-Host 'Scheduled pipeline deployment: ${escapedName}' -ForegroundColor Cyan`,
+        `Write-Host 'Running deploy script...' -ForegroundColor Green`,
+        `& '${winDeployPath}'`,
+      ].join("\r\n");
+    } else {
+      // Team: use Claude with primer
+      const winPrimerPath = primerPath.replace(/\//g, "\\");
+      const escapedPrimerPath = winPrimerPath.replace(/'/g, "''");
+      ps1Content = [
+        `Remove-Item Env:CLAUDECODE -ErrorAction SilentlyContinue`,
+        `Write-Host 'Scheduled deployment: ${escapedName}' -ForegroundColor Cyan`,
+        `Write-Host 'Primer: ${escapedPrimerPath}' -ForegroundColor Yellow`,
+        `Write-Host 'Starting Claude...' -ForegroundColor Green`,
+        `try {`,
+        `  claude --dangerously-skip-permissions "Read the deployment primer at '${escapedPrimerPath}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`,
+        `} catch {`,
+        `  Write-Host "Error: $_" -ForegroundColor Red`,
+        `}`,
+      ].join("\r\n");
+    }
+    await writeTextFile(scriptPath, "\uFEFF" + ps1Content);
 
     // Convert to Windows path for schtasks
     const winScriptPath = scriptPath.replace(/\//g, "\\");
@@ -156,13 +171,27 @@ export async function createSchedule(
   } else {
     // Write a .sh script
     scriptPath = join(schedulesDir, `${taskName}.sh`);
-    const escapedPrimerPathUnix = primerPath.replace(/'/g, "'\\''");
-    const shContent = [
-      "#!/bin/bash",
-      "unset CLAUDECODE",
-      `echo 'Scheduled deployment: ${teamName.replace(/'/g, "'\\''")}'`,
-      `claude --dangerously-skip-permissions "Read the deployment primer at '${escapedPrimerPathUnix}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`,
-    ].join("\n");
+    let shContent: string;
+
+    if (deployScriptPath) {
+      // Pipeline: run deploy script directly
+      const escapedDeployPath = deployScriptPath.replace(/'/g, "'\\''");
+      shContent = [
+        "#!/bin/bash",
+        "unset CLAUDECODE",
+        `echo 'Scheduled pipeline deployment: ${teamName.replace(/'/g, "'\\''")}'`,
+        `bash '${escapedDeployPath}'`,
+      ].join("\n");
+    } else {
+      // Team: use Claude with primer
+      const escapedPrimerPathUnix = primerPath.replace(/'/g, "'\\''");
+      shContent = [
+        "#!/bin/bash",
+        "unset CLAUDECODE",
+        `echo 'Scheduled deployment: ${teamName.replace(/'/g, "'\\''")}'`,
+        `claude --dangerously-skip-permissions "Read the deployment primer at '${escapedPrimerPathUnix}' using the Read tool and follow ALL instructions in it exactly. Start immediately."`,
+      ].join("\n");
+    }
     await writeTextFile(scriptPath, shContent);
 
     // Create OS cron job

@@ -26,6 +26,7 @@ interface TreeState {
   metadata: TreeMetadata | null;
   currentLayoutId: string | null;
   layouts: Array<{ id: string; name: string; lastModified: number }>;
+  clipboard: { nodes: AuiNode[]; sourceParentId: string | null } | null;
 }
 
 interface TreeActions {
@@ -43,7 +44,7 @@ interface TreeActions {
   createGroupNode(name: string, description: string, parentId?: string): void;
   createPipelineNode(name: string, description: string, parentId?: string): void;
   updatePipelineSteps(nodeId: string, steps: PipelineStep[]): void;
-  deployPipeline(nodeId: string): Promise<void>;
+  deployPipeline(nodeId: string, options?: { skipLaunch?: boolean }): Promise<void>;
   cacheSkillName(id: string, name: string): void;
   assignSkillToNode(nodeId: string, skillId: string): void;
   removeSkillFromNode(nodeId: string, skillId: string): void;
@@ -64,6 +65,9 @@ interface TreeActions {
   saveNodePosition(nodeId: string, pos: { x: number; y: number }): void;
   saveNodePositions(positions: Record<string, { x: number; y: number }>): void;
   clearNodePosition(nodeId: string): void;
+  copyNodes(nodeId: string): void;
+  duplicateNodes(nodeId: string): Promise<string | null>;
+  pasteNodes(targetParentId: string): Promise<string | null>;
 }
 
 type TreeStore = TreeState & TreeActions;
@@ -137,6 +141,115 @@ async function parseFile(
   }
 }
 
+// ── Node cloning helpers ────────────────────────────
+
+function collectDescendantNodes(nodes: Map<string, AuiNode>, parentId: string): AuiNode[] {
+  const result: AuiNode[] = [];
+  for (const [, node] of nodes) {
+    if (node.parentId === parentId) {
+      result.push(node);
+      result.push(...collectDescendantNodes(nodes, node.id));
+    }
+  }
+  return result;
+}
+
+async function findUniqueFilePath(dir: string, baseName: string, ext: string): Promise<string> {
+  let filePath = join(dir, `${baseName}${ext}`);
+  if (!(await exists(filePath))) return filePath;
+  for (let i = 2; i <= 20; i++) {
+    filePath = join(dir, `${baseName}-${i}${ext}`);
+    if (!(await exists(filePath))) return filePath;
+  }
+  return join(dir, `${baseName}-${Date.now().toString(36).slice(-5)}${ext}`);
+}
+
+async function cloneNodeTree(
+  sourceNodes: AuiNode[],
+  rootNodeId: string,
+  targetParentId: string | null,
+  projectPath: string,
+): Promise<{ clonedNodes: Map<string, AuiNode>; newRootId: string } | null> {
+  if (sourceNodes.length === 0) return null;
+
+  const idMap = new Map<string, string>();
+  const sourcePathMap = new Map<string, string>();
+
+  // First pass: generate new IDs (and write files for file-backed nodes)
+  for (const node of sourceNodes) {
+    const isCloneRoot = node.id === rootNodeId;
+    const newName = isCloneRoot ? `${node.name} (copy)` : node.name;
+    const slug = newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+    if (node.kind === "agent" && node.sourcePath) {
+      const dir = join(projectPath, ".claude", "agents");
+      if (!(await exists(dir))) await mkdir(dir, { recursive: true });
+      const filePath = await findUniqueFilePath(dir, slug, ".md");
+      await writeTextFile(filePath, node.promptBody || `---\nname: ${newName}\ndescription: ""\n---\n`);
+      idMap.set(node.id, generateNodeId(filePath));
+      sourcePathMap.set(node.id, filePath);
+    } else if (node.kind === "skill" && node.sourcePath) {
+      const skillDir = join(projectPath, ".claude", "skills", slug);
+      if (!(await exists(skillDir))) await mkdir(skillDir, { recursive: true });
+      const filePath = join(skillDir, "SKILL.md");
+      await writeTextFile(filePath, node.promptBody || `---\nname: ${slug}\ndescription: ""\n---\n`);
+      idMap.set(node.id, generateNodeId(filePath));
+      sourcePathMap.set(node.id, filePath);
+    } else if (node.kind === "context" && node.sourcePath) {
+      const parts = normalizePath(node.sourcePath).split("/");
+      const fileName = parts.pop() ?? "context.md";
+      const dir = parts.join("/");
+      const baseName = fileName.replace(/\.md$/, "");
+      const copyBaseName = isCloneRoot ? `${baseName}-copy` : baseName;
+      if (dir) {
+        const filePath = await findUniqueFilePath(dir, copyBaseName, ".md");
+        await writeTextFile(filePath, node.promptBody || "");
+        idMap.set(node.id, generateNodeId(filePath));
+        sourcePathMap.set(node.id, filePath);
+      } else {
+        idMap.set(node.id, `ctx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+      }
+    } else {
+      // Virtual node (group, pipeline, human)
+      const prefix = node.kind === "pipeline" ? "pipeline" : "group";
+      idMap.set(node.id, `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    }
+  }
+
+  // Second pass: create cloned AuiNode objects with remapped IDs
+  const clonedNodes = new Map<string, AuiNode>();
+  let newRootId = "";
+
+  for (const node of sourceNodes) {
+    const newId = idMap.get(node.id)!;
+    const isCloneRoot = node.id === rootNodeId;
+
+    const newParentId = isCloneRoot
+      ? targetParentId
+      : (idMap.get(node.parentId!) ?? node.parentId);
+
+    const cloned: AuiNode = {
+      ...node,
+      id: newId,
+      name: isCloneRoot ? `${node.name} (copy)` : node.name,
+      parentId: newParentId,
+      sourcePath: sourcePathMap.get(node.id) ?? "",
+      lastModified: Date.now(),
+      validationErrors: [],
+      pipelineSteps: node.pipelineSteps.map((step) => ({
+        ...step,
+        id: `step-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        teamId: idMap.get(step.teamId) ?? step.teamId,
+      })),
+    };
+
+    clonedNodes.set(cloned.id, cloned);
+    if (isCloneRoot) newRootId = cloned.id;
+  }
+
+  return { clonedNodes, newRootId };
+}
+
 export const useTreeStore = create<TreeStore>()((set, get) => ({
   nodes: new Map(),
   skillNameCache: new Map(),
@@ -147,6 +260,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   metadata: null,
   currentLayoutId: null,
   layouts: [],
+  clipboard: null,
 
   async loadProject(path: string) {
     set({ loading: true, error: null });
@@ -208,8 +322,22 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         }
       }
 
+      // Restore skillNameCache from metadata + rebuild from live skill nodes
+      const skillNameCache = new Map<string, string>();
+      if (metadata?.skillNameCache) {
+        for (const [k, v] of Object.entries(metadata.skillNameCache)) {
+          skillNameCache.set(k, v);
+        }
+      }
+      for (const [id, node] of nodes) {
+        if (node.kind === "skill" && node.name) {
+          skillNameCache.set(id, node.name);
+        }
+      }
+
       set({
         nodes,
+        skillNameCache,
         rootId: "root",
         projectPath: path,
         metadata,
@@ -332,12 +460,19 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       }
     }
 
+    // Serialize skillNameCache
+    const snc: Record<string, string> = {};
+    for (const [k, v] of get().skillNameCache) {
+      snc[k] = v;
+    }
+
     const updated: TreeMetadata = {
       owner: metadata?.owner ?? { name: "Kevin", description: "" },
       hierarchy,
       positions,
       groups: groups.length > 0 ? groups : undefined,
       lastModified: Date.now(),
+      skillNameCache: Object.keys(snc).length > 0 ? snc : undefined,
     };
 
     try {
@@ -522,7 +657,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     get().saveTreeMetadata();
   },
 
-  async deployPipeline(nodeId: string) {
+  async deployPipeline(nodeId: string, options?: { skipLaunch?: boolean }) {
     const { nodes, projectPath } = get();
     if (!projectPath) return;
 
@@ -803,8 +938,10 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       const scriptPath = join(pipelineDir, "deploy.ps1");
       await writeTextFile(scriptPath, "\uFEFF" + lines.join("\r\n"));
       const winScriptPath = scriptPath.replace(/\//g, "\\");
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("open_terminal", { scriptPath: winScriptPath });
+      if (!options?.skipLaunch) {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("open_terminal", { scriptPath: winScriptPath });
+      }
     } else {
       const esc = (s: string) => s.replace(/'/g, "'\\''");
       const lines: string[] = [
@@ -862,8 +999,10 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       const { Command } = await import("@tauri-apps/plugin-shell");
       const chmod = Command.create("bash", ["-c", `chmod +x '${scriptPath}'`]);
       await chmod.execute();
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("open_terminal", { scriptPath });
+      if (!options?.skipLaunch) {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("open_terminal", { scriptPath });
+      }
     }
   },
 
@@ -2085,5 +2224,60 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
     const positions = { ...metadata.positions };
     delete positions[nodeId];
     set({ metadata: { ...metadata, positions } });
+  },
+
+  copyNodes(nodeId: string) {
+    const { nodes } = get();
+    const source = nodes.get(nodeId);
+    if (!source || nodeId === "root") return;
+
+    const descendants = collectDescendantNodes(nodes, nodeId);
+    const allNodes = [{ ...source }, ...descendants.map((n) => ({ ...n }))];
+
+    set({ clipboard: { nodes: allNodes, sourceParentId: source.parentId } });
+  },
+
+  async duplicateNodes(nodeId: string): Promise<string | null> {
+    const { nodes, projectPath } = get();
+    if (!projectPath) return null;
+    const source = nodes.get(nodeId);
+    if (!source || nodeId === "root") return null;
+
+    const descendants = collectDescendantNodes(nodes, nodeId);
+    const allSource = [source, ...descendants];
+
+    const result = await cloneNodeTree(allSource, nodeId, source.parentId, projectPath);
+    if (!result) return null;
+
+    set((state) => {
+      const next = new Map(state.nodes);
+      for (const [id, node] of result.clonedNodes) {
+        next.set(id, node);
+      }
+      return { nodes: next };
+    });
+
+    get().saveTreeMetadata();
+    return result.newRootId;
+  },
+
+  async pasteNodes(targetParentId: string): Promise<string | null> {
+    const { clipboard, projectPath } = get();
+    if (!clipboard || clipboard.nodes.length === 0 || !projectPath) return null;
+
+    const rootNodeId = clipboard.nodes[0].id;
+    const result = await cloneNodeTree(clipboard.nodes, rootNodeId, targetParentId, projectPath);
+    if (!result) return null;
+
+    set((state) => {
+      const next = new Map(state.nodes);
+      for (const [id, node] of result.clonedNodes) {
+        next.set(id, node);
+      }
+      return { nodes: next };
+    });
+
+    get().saveTreeMetadata();
+    return result.newRootId;
   },
 }));

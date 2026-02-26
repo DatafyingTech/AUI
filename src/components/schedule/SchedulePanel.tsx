@@ -305,9 +305,15 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       }
 
       let primerContent: string;
+      let deployScriptPath: string | undefined;
+
       if (team.kind === "pipeline") {
-        // For pipelines, the primer is a note that the deploy script handles sequencing
-        primerContent = `Pipeline: ${team.name}\nSteps: ${team.pipelineSteps.length}\nThis schedule runs the pipeline deploy script which executes all steps sequentially.`;
+        // Generate pipeline deploy artifacts (primers + deploy script) without opening terminal
+        await useTreeStore.getState().deployPipeline(selectedTeamId, { skipLaunch: true });
+        const slug = team.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const isWin = navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
+        deployScriptPath = join(projectPath, ".aui", `pipeline-${slug}`, isWin ? "deploy.ps1" : "deploy.sh");
+        primerContent = `Pipeline: ${team.name}\nDeploy script: ${deployScriptPath}`;
       } else {
         // Generate skill files first (non-fatal if it fails)
         try {
@@ -329,6 +335,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         repeat,
         primerContent,
         prompt.trim(),
+        deployScriptPath,
       );
 
       await loadJobs();
