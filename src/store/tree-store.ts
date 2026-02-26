@@ -329,11 +329,15 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
           skillNameCache.set(k, v);
         }
       }
+      // Always rebuild from live nodes (authoritative source)
+      let skillCount = 0;
       for (const [id, node] of nodes) {
         if (node.kind === "skill" && node.name) {
           skillNameCache.set(id, node.name);
+          skillCount++;
         }
       }
+      console.log(`[ATM] Loaded ${nodes.size} nodes (${skillCount} skills, ${skillNameCache.size} cached names)`);
 
       set({
         nodes,
@@ -343,6 +347,9 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         metadata,
         loading: false,
       });
+
+      // Persist skillNameCache immediately so it survives restarts
+      await get().saveTreeMetadata();
 
       // Load saved layouts after the tree is fully loaded
       await get().loadLayouts();
@@ -521,12 +528,13 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
     await writeTextFile(filePath, content);
 
+    const resolvedParent = parentId ?? "root";
     const id = generateNodeId(filePath);
     const node: AuiNode = {
       id,
       name: displayName,
       kind: "agent",
-      parentId: parentId ?? "root",
+      parentId: resolvedParent,
       team: null,
       sourcePath: filePath,
       config: null,
@@ -545,6 +553,19 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       next.set(id, node);
       return { nodes: next };
     });
+
+    // Position near parent
+    const { metadata } = get();
+    if (metadata) {
+      const parentPos = metadata.positions[resolvedParent];
+      if (parentPos) {
+        const siblingCount = Array.from(get().nodes.values()).filter(
+          (n) => n.parentId === resolvedParent && n.id !== id,
+        ).length;
+        const pos = { x: parentPos.x + (siblingCount % 3) * 300, y: parentPos.y + 160 };
+        get().saveNodePosition(id, pos);
+      }
+    }
   },
 
   async createSkillNode(name: string, description: string, parentId?: string) {
@@ -562,12 +583,13 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
     await writeTextFile(filePath, content);
 
+    const resolvedParent = parentId ?? "root";
     const id = generateNodeId(filePath);
     const node: AuiNode = {
       id,
       name: displayName,
       kind: "skill",
-      parentId: parentId ?? "root",
+      parentId: resolvedParent,
       team: null,
       sourcePath: filePath,
       config: null,
@@ -586,15 +608,29 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       next.set(id, node);
       return { nodes: next };
     });
+
+    // Position near parent
+    const { metadata } = get();
+    if (metadata) {
+      const parentPos = metadata.positions[resolvedParent];
+      if (parentPos) {
+        const siblingCount = Array.from(get().nodes.values()).filter(
+          (n) => n.parentId === resolvedParent && n.id !== id,
+        ).length;
+        const pos = { x: parentPos.x + (siblingCount % 3) * 300, y: parentPos.y + 160 };
+        get().saveNodePosition(id, pos);
+      }
+    }
   },
 
   createGroupNode(name: string, description: string, parentId?: string) {
     const id = `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const resolvedParent = parentId ?? "root";
     const node: AuiNode = {
       id,
       name,
       kind: "group",
-      parentId: parentId ?? "root",
+      parentId: resolvedParent,
       team: null,
       sourcePath: "",
       config: null,
@@ -613,17 +649,32 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       next.set(id, node);
       return { nodes: next };
     });
+
+    // Position near parent so new node doesn't fly off to distant dagre coordinates
+    const { metadata } = get();
+    if (metadata) {
+      const parentPos = metadata.positions[resolvedParent];
+      if (parentPos) {
+        // Count existing siblings for offset
+        const siblingCount = Array.from(get().nodes.values()).filter(
+          (n) => n.parentId === resolvedParent && n.id !== id,
+        ).length;
+        const pos = { x: parentPos.x + (siblingCount % 3) * 300, y: parentPos.y + 160 };
+        get().saveNodePosition(id, pos);
+      }
+    }
 
     get().saveTreeMetadata();
   },
 
   createPipelineNode(name: string, description: string, parentId?: string) {
     const id = `pipeline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const resolvedParent = parentId ?? "root";
     const node: AuiNode = {
       id,
       name,
       kind: "pipeline",
-      parentId: parentId ?? "root",
+      parentId: resolvedParent,
       team: null,
       sourcePath: "",
       config: null,
@@ -642,6 +693,19 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       next.set(id, node);
       return { nodes: next };
     });
+
+    // Position near parent
+    const { metadata } = get();
+    if (metadata) {
+      const parentPos = metadata.positions[resolvedParent];
+      if (parentPos) {
+        const siblingCount = Array.from(get().nodes.values()).filter(
+          (n) => n.parentId === resolvedParent && n.id !== id,
+        ).length;
+        const pos = { x: parentPos.x + (siblingCount % 3) * 300, y: parentPos.y + 160 };
+        get().saveNodePosition(id, pos);
+      }
+    }
 
     get().saveTreeMetadata();
   },

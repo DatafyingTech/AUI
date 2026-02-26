@@ -32,11 +32,19 @@ https://youtu.be/YhwVby25sJ8
 
 ## Key Features
 
-### Typed Variables with Sensitive Value Masking (NEW in v0.6.0)
+### Node Duplication (NEW in v0.6.5)
+
+Copy, paste, and duplicate entire team structures with a single shortcut. **Ctrl+C** copies a node and all its children, **Ctrl+V** pastes under the selected parent, and **Ctrl+D** duplicates in-place with a "(copy)" suffix. File-backed nodes (agents, skills) get new files written to disk automatically. Right-click any node for quick "Duplicate" and "Copy" options.
+
+### Smart Node Placement
+
+New nodes appear right next to their parent instead of flying off to a distant corner of the canvas. Siblings fan out in a grid so your tree stays organized as you build.
+
+### Typed Variables with Sensitive Value Masking
 
 Define variables at any level of your org -- root, team, or agent -- and they cascade downward automatically. Each variable has a **type** (API Key, Password, Note, or Text) and sensitive values are masked by default with an eye toggle to reveal them. When ATM generates a deployment primer, all variables are resolved and included in the briefing so your agents have every credential and config value they need without you pasting anything manually.
 
-### **New **Project Manager Pipelines
+### Project Manager Pipelines
 
 Chain multiple teams into ordered workflows. A Project Manager node lets you define sequential steps -- Team 1 runs to completion, then Team 2 starts, then Team 3 follows. Each step has its own deployment objective. Hit **Play All** to execute the entire pipeline in a single terminal session, or **Schedule** it to run on a recurring basis. The same team can appear in multiple steps with different objectives.
 
@@ -125,6 +133,7 @@ Claude receives a comprehensive briefing with complete context about your compan
 
 | Capability | Details |
 |------------|---------|
+| **Node Duplication** | Ctrl+C/V/D to copy, paste, and duplicate entire team subtrees |
 | **Typed Variables** | API Key, Password, Note, Text types with sensitive value masking and root-to-agent inheritance |
 | **Pipelines** | Chain teams into sequential multi-step workflows with per-step objectives |
 | **Org Chart** | Drag-and-drop canvas with collapse/expand, context menu reparenting, edge insert |
@@ -132,6 +141,7 @@ Claude receives a comprehensive briefing with complete context about your compan
 | **Scheduling** | OS-level task scheduling (Task Scheduler / cron) with repeat options |
 | **AI Generation** | Generate full org structures, descriptions, and skill files from natural language |
 | **Layouts** | Save, switch, rename multiple named org configurations |
+| **Smart Placement** | New nodes appear near their parent, not in a distant corner |
 | **Autosave** | All editors save automatically after 800ms of idle typing |
 | **Zero Lock-In** | Standard Claude Code config files -- no proprietary formats |
 | **Export/Import** | Save your entire org to JSON, import it on another machine |
@@ -142,7 +152,7 @@ Claude receives a comprehensive briefing with complete context about your compan
 
 ### Download (Recommended)
 
-**[Download ATM v0.6.0 for Windows](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.exe` installer and you are running in seconds.
+**[Download ATM for Windows](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.exe` installer and you are running in seconds.
 
 > macOS and Linux installers coming soon. For now, build from source below.
 

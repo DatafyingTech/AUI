@@ -1,4 +1,4 @@
-import React, { memo, useState } from "react";
+import React, { memo, useMemo, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { AuiNode, NodeKind } from "@/types/aui-node";
 import { useUiStore } from "@/store/ui-store";
@@ -53,17 +53,35 @@ function OrgNodeInner({ data, selected }: NodeProps) {
   // Team = blue, sub-agent = lighter blue, agent-in-team = orange, pipeline = magenta
   const color = isPipeline ? "#d946ef" : isSubAgent ? "#a5d6ff" : isMember ? "#f0883e" : KIND_COLORS[node.kind];
 
-  // Resolve assigned skill names (tree node → name cache → raw ID)
+  // Build comprehensive skill ID → name map from all sources
   const skillNameCache = useTreeStore((s) => s.skillNameCache);
+  const skillIdToName = useMemo(() => {
+    const map = new Map<string, string>();
+    // Source 1: live skill nodes in the store (most authoritative)
+    for (const [id, n] of allNodes) {
+      if (n.kind === "skill" && n.name) {
+        map.set(id, n.name);
+      }
+    }
+    // Source 2: persisted skillNameCache (covers skills not loaded as nodes)
+    for (const [id, name] of skillNameCache) {
+      if (!map.has(id)) {
+        map.set(id, name);
+      }
+    }
+    return map;
+  }, [allNodes, skillNameCache]);
+
+  // Resolve assigned skill names using the comprehensive map
   const skillNames: string[] = [];
   if (node.assignedSkills.length > 0) {
     for (const skillId of node.assignedSkills) {
-      const skillNode = allNodes.get(skillId);
-      if (skillNode) {
-        skillNames.push(skillNode.name);
+      const name = skillIdToName.get(skillId);
+      if (name) {
+        skillNames.push(name);
       } else {
-        const cached = skillNameCache.get(skillId);
-        skillNames.push(cached ?? skillId);
+        console.warn(`[ATM] Skill ID "${skillId}" not resolved for group "${node.name}"`);
+        skillNames.push(skillId);
       }
     }
   }
