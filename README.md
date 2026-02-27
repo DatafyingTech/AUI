@@ -6,199 +6,121 @@
 
 # ATM -- Agent Team Manager
 
-**Stop writing prompts. Start managing teams.**
+**Your Claude agents are scattered across dozens of markdown files and you can't remember which one writes Python tests.**
 
-Stop managing AI agents in scattered markdown files. ATM (Agent Team Manager) is a free, open-source desktop app that gives you a visual org chart for your entire Claude Code workforce.
-Build teams. Assign skills. Deploy pipelines. All from a drag-and-drop canvas.
+ATM turns your `.claude/` folder from a graveyard of forgotten agent definitions into an org chart you can actually use. Drag-drop to build teams, click once to deploy 6 agents in parallel, schedule them to run on cron. It's the missing UI layer between "I wrote some agent configs" and "I have an AI team that runs while I'm away."
 
 ---
 ### Video Demo
 https://youtu.be/YhwVby25sJ8
 ---
 
-## What ATM Replaces
+## What You're Doing Right Now
 
-| Without ATM | With ATM |
-|-------------|----------|
-| Hand-write agent `.md` files with YAML frontmatter | Visual editor with auto-save |
-| Copy-paste API keys into every config | Typed variables cascade from root to team to agent automatically |
-| Manually compose 2000-word deployment primers | One click generates a comprehensive primer with full context |
-| No way to run Team A then Team B then Team C | Pipeline editor chains teams into sequential workflows |
-| Set up cron jobs or Task Scheduler by hand | Built-in scheduler with repeat options and visual job list |
-| Start from scratch every time | Save, name, and switch between multiple org layouts |
-| Describe your org in text and hope Claude understands | Visual org chart that maps directly to Claude Code team structure |
+You've got 15 Claude agents scattered across `.claude/agents/`. Every time you need to run them:
 
----
+1. **Open the markdown file** in your editor
+2. **Hand-edit the YAML frontmatter** -- was it `apiKey` or `api_key`? Did you close the quotes?
+3. **Copy-paste the same API keys** into three different agent configs
+4. **Write a 2000-word deployment primer** from scratch because you're running a team and Claude needs context
+5. **Hope you described your org structure clearly enough** that the team lead interprets it correctly
+6. **Manually kick off the run** from the terminal
+7. **Realize you need daily runs** -- spend 30 minutes fighting with cron or Windows Task Scheduler
+8. **Want to chain teams together?** Write another deployment primer explaining what the previous team did
 
-## Key Features
+You know the config works because you've run it before. But there's no reusable template. No visual overview. No automation. Just you, your text editor, and a growing collection of agent markdown files you're terrified to touch.
 
-### Node Duplication (NEW in v0.6.5)
+### What ATM Does Instead
 
-Copy, paste, and duplicate entire team structures with a single shortcut. **Ctrl+C** copies a node and all its children, **Ctrl+V** pastes under the selected parent, and **Ctrl+D** duplicates in-place with a "(copy)" suffix. File-backed nodes (agents, skills) get new files written to disk automatically. Right-click any node for quick "Duplicate" and "Copy" options.
+- **Drag-drop visual org chart** -- see your entire agent hierarchy at a glance
+- **One-click agent creation** -- templates autofill the YAML, you just name it
+- **Shared API key management** -- edit once at root, applies everywhere
+- **Save deployment configs** -- run the same team setup tomorrow with one click
+- **Schedule runs** -- daily SOC reports at 6am, weekly content pipelines on Monday morning, no manual cron
+- **Chain pipelines** -- Team A feeds into Team B feeds into Team C, automatically
+- **Auto-generated deployment primers** -- ATM writes the 2000-word primer for you
 
-### Smart Node Placement
-
-New nodes appear right next to their parent instead of flying off to a distant corner of the canvas. Siblings fan out in a grid so your tree stays organized as you build.
-
-### Typed Variables with Sensitive Value Masking
-
-Define variables at any level of your org -- root, team, or agent -- and they cascade downward automatically. Each variable has a **type** (API Key, Password, Note, or Text) and sensitive values are masked by default with an eye toggle to reveal them. When ATM generates a deployment primer, all variables are resolved and included in the briefing so your agents have every credential and config value they need without you pasting anything manually.
-
-### Project Manager Pipelines
-
-Chain multiple teams into ordered workflows. A Project Manager node lets you define sequential steps -- Team 1 runs to completion, then Team 2 starts, then Team 3 follows. Each step has its own deployment objective. Hit **Play All** to execute the entire pipeline in a single terminal session, or **Schedule** it to run on a recurring basis. The same team can appear in multiple steps with different objectives.
-
-
-### Visual Org Chart
-
-Design your AI workforce on a full pan/zoom/drag canvas. Nodes are color-coded by role -- gold for You (the CEO), blue for Teams, orange for Agents, light blue for Sub-Agents, magenta for Project Managers, and green for Skills. Collapse and expand entire departments. Right-click any node for a context menu with **Move to...** reparenting that lists every valid target. Hover over connection lines to insert new nodes between existing pairs. The org chart is not decoration -- it directly defines the team structure that gets deployed.
-
-<img width="1909" height="997" alt="agents" src="https://github.com/user-attachments/assets/40981b99-6cc8-4875-a1b6-ee1817c86df7" />
-
-
-### One-Click Deploy
-
-Write a short objective, click Deploy. ATM handles everything else:
-
-1. Generates any missing skill files (existing ones are preserved)
-2. Builds a comprehensive deployment primer -- company context, team overview, all skill file contents, resolved variables, coordination rules
-3. Opens an external terminal and launches Claude CLI with the full primer already submitted
-
-No prompt engineering. No copy-pasting. No context window anxiety. The primer is also saved to `.aui/deploy-primer.md` so you can review or reuse it.
-
-### Real Scheduling
-
-Attach recurring schedules to any team or pipeline using actual OS-level task scheduling -- Windows Task Scheduler on Windows, crontab on macOS/Linux. Choose from Once, Hourly, Daily, Weekly, or custom cron expressions. Your AI teams run on schedule even when ATM is closed. Every execution opens a fresh terminal with a full deployment primer.
-
-### AI-Powered Team Generation
-
-Describe your company or project goals, specify how many teams and agents you want, and ATM generates the entire org structure -- complete with names, roles, and descriptions tailored to your objectives. Generate descriptions individually, batch-generate across multi-selected nodes, or let ATM build your whole workforce from a single paragraph.
-
-### Multiple Layouts
-
-Save your current org as a named layout, create blank canvases, and switch between configurations instantly. Each layout preserves the full tree hierarchy, group metadata, node positions, and variables independently. Rename or delete layouts from the toolbar dropdown. Build a "Production" layout and a "Testing" layout and flip between them in one click.
-
-### Zero Lock-In
-
-ATM reads and writes standard Claude Code config files (`.claude/agents/*.md`, `.claude/skills/*/SKILL.md`, `.claude/settings.json`). Every agent, skill, and setting ATM creates is a normal file on disk. Stop using ATM tomorrow and everything still works exactly as it did before.
+Stop editing YAML at 11pm. Start deploying.
 
 ---
 
-## How It Works
+## What You Can Do
 
-ATM follows a four-step workflow:
+### Generate Entire Organizations from a Paragraph
 
-### 1. Design
+Describe your company goals and specify how many teams you need. ATM generates the complete org chart: names, roles, detailed descriptions, proper hierarchy. Generate one agent at a time or batch-generate dozens. Skip the tedious boilerplate and iterate on team composition instead.
 
-Build your org chart on the canvas. Create teams, drag agents between departments, assign skills. Use AI generation to scaffold entire structures from a description, or build node by node.
+### The Org Chart IS Your Team Structure
 
-### 2. Configure
+<img width="1909" height="997" alt="ATM visual org chart" src="https://github.com/user-attachments/assets/40981b99-6cc8-4875-a1b6-ee1817c86df7" />
 
-Click any node to open its profile in the inspector. Set descriptions, assign variables (API keys, credentials, configuration values), attach skills, choose models and permissions. Variables defined at the root cascade to every team and agent below -- set an API key once and every agent inherits it.
+This isn't a visualization -- it's the real thing. Drag nodes to reparent agents, right-click to move between departments, hover connection lines to insert new roles. Nodes color-code by type: gold for you, blue for teams, orange for agents, magenta for project managers, green for skills. When you deploy, this exact hierarchy deploys.
 
-### 3. Deploy
+### Deploy Entire AI Teams in Seconds
 
-Write a brief objective and click Deploy. ATM compiles everything -- your org structure, every skill file, all resolved variables, coordination rules, and your objective -- into a single deployment primer. It opens an external terminal and launches Claude with the full briefing. For multi-step workflows, use a Project Manager pipeline to chain teams sequentially.
+Write a one-sentence objective, click Deploy. ATM generates any missing skill files, compiles a complete deployment primer with company context, team structure, skill contents, resolved variables, and coordination rules, then opens your terminal with the Claude CLI already running. No manual file editing, no forgotten context, no copy-paste.
 
-### 4. Claude Does the Work
+### Run Teams on Autopilot
 
-Claude receives a comprehensive briefing with complete context about your company, every team member's skills, all necessary credentials, and clear objectives. No token waste on back-and-forth clarification. No missing context. Your AI workforce executes with the full picture from the first message.
+Schedule any team or pipeline with OS-level scheduling (Windows Task Scheduler or cron on macOS/Linux). Daily, weekly, hourly, or custom intervals. Each execution spawns a fresh terminal with the full deployment primer, even when ATM is closed. Your content pipeline runs at 6am. Your SOC team checks systems every hour. You sleep.
 
-## Screenshots
+### Chain Teams into Multi-Step Workflows
 
-**Example 1: Crypto Investment Firm**
-
-<img width="506" height="682" alt="1" src="https://github.com/user-attachments/assets/522461e4-9833-43d6-92e5-d19e96bed3ea" />
-<img width="1858" height="695" alt="2" src="https://github.com/user-attachments/assets/80f670af-89fe-40ed-b8ae-09b42856fafa" />
-<img width="796" height="445" alt="3" src="https://github.com/user-attachments/assets/2f5274c4-59c3-4ffa-af8c-730a872f2cf3" />
-<img width="1908" height="1000" alt="4" src="https://github.com/user-attachments/assets/1e8731f2-d03a-45a1-a74b-ca5b92e7f6ac" />
-<img width="410" height="624" alt="5" src="https://github.com/user-attachments/assets/4db58ca9-29cd-4978-92db-cf557249a146" />
-<img width="1099" height="631" alt="6" src="https://github.com/user-attachments/assets/877d9b7d-1abc-4c96-8654-e30ca8994c6a" />
+Project Manager Pipelines let you sequence teams: Research team -> Analysis team -> Writing team, each with its own objective. Play the entire pipeline manually or schedule it. Each step completes before the next begins, with full context handoff.
 
 ---
 
-**Example 2: IT Security / SOC Team**
+## Real Teams, Running Today
 
-<img width="1914" height="1000" alt="Screenshot 2026-02-24 125817" src="https://github.com/user-attachments/assets/6086b73d-632a-4381-8277-d87328460009" />
-<img width="1913" height="1002" alt="223121" src="https://github.com/user-attachments/assets/a08f368e-84fc-498d-8be3-02135d0526d3" />
-<img width="1909" height="997" alt="3 3131" src="https://github.com/user-attachments/assets/d2d61d82-db38-4dfa-9dc6-e7769aa489f7" />
-<img width="1905" height="997" alt="4 es" src="https://github.com/user-attachments/assets/b04771ad-78d3-4fc6-ab12-42a247223a3e" />
-<img width="1907" height="998" alt="Screenshot 2026-02-24 161224" src="https://github.com/user-attachments/assets/3c4cef4a-14bd-4fd6-975d-07584b3e1a01" />
+### Crypto Investment Research
 
----
-## New Multi Team Scheduling Feature
-<img width="468" height="965" alt="7" src="https://github.com/user-attachments/assets/5c355b1d-0744-46db-af89-09506693d31c" />
+A solo crypto investor built a 6-agent research team -- market analysts, risk assessors, portfolio optimizers, and a manager coordinating them. The team processes overnight market movements and delivers a unified investment brief every morning.
 
-## At a Glance
+<img width="506" height="682" alt="Crypto investment org chart" src="https://github.com/user-attachments/assets/522461e4-9833-43d6-92e5-d19e96bed3ea" />
+<img width="1858" height="695" alt="Crypto team canvas" src="https://github.com/user-attachments/assets/80f670af-89fe-40ed-b8ae-09b42856fafa" />
 
-| Capability | Details |
-|------------|---------|
-| **Node Duplication** | Ctrl+C/V/D to copy, paste, and duplicate entire team subtrees |
-| **Typed Variables** | API Key, Password, Note, Text types with sensitive value masking and root-to-agent inheritance |
-| **Pipelines** | Chain teams into sequential multi-step workflows with per-step objectives |
-| **Org Chart** | Drag-and-drop canvas with collapse/expand, context menu reparenting, edge insert |
-| **Deploy** | One-click primer generation + external terminal launch |
-| **Scheduling** | OS-level task scheduling (Task Scheduler / cron) with repeat options |
-| **AI Generation** | Generate full org structures, descriptions, and skill files from natural language |
-| **Layouts** | Save, switch, rename multiple named org configurations |
-| **Smart Placement** | New nodes appear near their parent, not in a distant corner |
-| **Autosave** | All editors save automatically after 800ms of idle typing |
-| **Zero Lock-In** | Standard Claude Code config files -- no proprietary formats |
-| **Export/Import** | Save your entire org to JSON, import it on another machine |
+### IT Security Operations (SOC)
+
+A one-person IT consultancy runs an 8-agent SOC team that triages Bitdefender alerts every morning at 6am. Includes a devil's advocate agent that challenges every recommendation before it reaches clients. One person, the analysis depth of a full security team.
+
+<img width="1914" height="1000" alt="SOC team overview" src="https://github.com/user-attachments/assets/6086b73d-632a-4381-8277-d87328460009" />
+<img width="1909" height="997" alt="SOC agent details" src="https://github.com/user-attachments/assets/d2d61d82-db38-4dfa-9dc6-e7769aa489f7" />
+
+### Social Media Content Pipeline
+
+A content creator's 7-agent team handles the full lifecycle: Reddit scouts find trending discussions, writers draft posts, tone calibrators ensure brand voice. The pipeline runs weekly on a schedule -- ready-to-publish content every Monday morning, no human intervention.
+
+<img width="468" height="965" alt="Schedule panel" src="https://github.com/user-attachments/assets/5c355b1d-0744-46db-af89-09506693d31c" />
 
 ---
 
-## Changelog
+## Get Running in 60 Seconds
 
-### v0.7.0 (2026-02-27)
-- **Added:** macOS support -- DMG installer now available alongside Windows EXE/MSI
-- **Added:** GitHub Actions workflow to build macOS DMG on tagged releases
-- **Fixed:** macOS terminal launch uses osascript instead of `open -a Terminal` (scripts now execute instead of opening as documents)
-- **Fixed:** Scheduled shell scripts are now `chmod +x` on macOS/Linux so cron jobs can execute them
-- **Fixed:** Project load errors now log details to console instead of being silently swallowed
-- **Improved:** Platform detection uses `navigator.userAgent` via shared utility instead of deprecated `navigator.platform`
-- **Improved:** Tauri bundle config includes macOS category and minimum system version
+**Download the installer:**
 
-### v0.6.5 (2026-02-26)
-- **Fixed:** AI-generated descriptions (via Generate button) now auto-save when clicking to another node
-- **Fixed:** New nodes (teams, agents, skills, pipelines) appear directly below their parent instead of at a random distant position
-- **Fixed:** Skill name resolution uses comprehensive lookup map from all sources (live nodes + persisted cache)
-- **Added:** Diagnostic logging for skill load tracking
-- **Added:** Node duplication via Ctrl+C/V/D and right-click context menu
+- **Windows**: **[Download ATM-Setup.exe](https://github.com/DatafyingTech/AUI/releases/latest)**
+- **macOS**: **[Download ATM.dmg](https://github.com/DatafyingTech/AUI/releases/latest)**
 
-### v0.6.4
-- **Added:** Copy/paste/duplicate entire team subtrees
-- **Fixed:** Pipeline schedules run deploy script directly instead of placeholder primer
-- **Fixed:** PowerShell deploy scripts use UTF-8 BOM encoding
+> **macOS users**: ATM is unsigned. Right-click the app and select "Open" the first time, or go to System Settings > Privacy & Security > "Open Anyway."
 
-### v0.6.3
-- **Fixed:** Pipeline deploy.ps1 encoding issues
-- **Added:** Dynamic version display in UI
+**First run:**
 
----
+1. Launch ATM -- it auto-detects your existing Claude Code agents and skills
+2. Browse your agent hierarchy on the visual canvas
+3. Drag agents into teams, assign skills, set variables
+4. Write a short objective, click Deploy, and watch your team go
 
-## Getting Started
-
-### Download (Recommended)
-
-**[Download ATM for Windows](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.exe` installer and you are running in seconds.
-
-**[Download ATM for macOS](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.dmg` installer.
-
-> **macOS note:** ATM is not signed with an Apple Developer certificate. On first launch, right-click the app and select **Open** (or go to System Settings > Privacy & Security > Open Anyway).
-
-### Build from Source
+That's it. No configuration files, no setup wizards.
 
 <details>
-<summary><strong>For developers or non-Windows platforms</strong></summary>
+<summary><strong>Build from source</strong> (for developers)</summary>
 
-**Paste into Claude Code** (fastest):
+**Fastest way**: Paste this repo URL into Claude Code and let it handle the setup:
 ```
 https://github.com/DatafyingTech/AUI
 ```
-Just paste the repo URL into any Claude Code session -- it will clone, install, and set up the project for you.
 
-**Or clone manually:**
+**Manual setup**:
 ```bash
 git clone https://github.com/DatafyingTech/AUI.git
 cd AUI
@@ -206,60 +128,70 @@ pnpm install
 pnpm tauri dev
 ```
 
-#### Prerequisites
+**Prerequisites**:
 
-| Requirement | Version | Install |
-|-------------|---------|---------|
-| **Node.js** | 18+ | [nodejs.org](https://nodejs.org/) |
-| **pnpm** | 9+ | `npm install -g pnpm` |
-| **Rust** | latest stable | [rustup.rs](https://rustup.rs/) |
-
-#### Platform Setup
+| Requirement | Version |
+|------------|---------|
+| Node.js | 18+ |
+| pnpm | 9+ |
+| Rust | stable |
 
 <details>
-<summary><strong>Windows</strong></summary>
+<summary>Platform-specific setup</summary>
 
-1. Install [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/visual-cpp-build-tools/) -- select the **"Desktop development with C++"** workload
-2. Install Rust via [rustup-init.exe](https://rustup.rs/)
-3. Restart your terminal, then run the Quick Start commands
+**Windows**:
+- Install [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with "Desktop development with C++" workload
+- Install Rust via [rustup-init.exe](https://rustup.rs/)
 
-</details>
-
-<details>
-<summary><strong>macOS</strong></summary>
-
+**macOS**:
 ```bash
 xcode-select --install
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Restart your terminal, then run the Quick Start commands.
-
-</details>
-
-<details>
-<summary><strong>Linux (Debian/Ubuntu)</strong></summary>
-
+**Linux** (Debian/Ubuntu):
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Restart your terminal, then run the Quick Start commands.
-
 </details>
 
-#### Build for Production
-
+**Build for production**:
 ```bash
 pnpm tauri build
 ```
 
-Produces platform-specific installers in `src-tauri/target/release/bundle/`.
+**Note**: `pnpm dev` runs frontend only. Use `pnpm tauri dev` for the full desktop app with file access, deployment, and terminal spawning.
 
 </details>
 
-> **Note:** `pnpm dev` runs only the frontend. For the full desktop experience -- file access, deployment, terminal spawning -- use `pnpm tauri dev`.
+---
+
+## How It Works
+
+1. **Design** -- Build your org chart by dragging agents into position and assigning skills
+2. **Configure** -- Click any node to set API keys, passwords, descriptions, and skills in the inspector
+3. **Deploy** -- Write your objective, click Deploy, and ATM compiles the full primer then launches Claude in your terminal
+4. **Run** -- Claude executes with complete context from message one. No manual setup, no missing config
+
+---
+
+## At a Glance
+
+| Capability | Details |
+|------------|---------|
+| **Org Chart** | Drag-and-drop canvas with collapse, reparenting, edge insert |
+| **One-Click Deploy** | Auto-generated primer + terminal launch |
+| **Pipelines** | Chain teams into sequential multi-step workflows |
+| **Scheduling** | OS-level scheduling (Task Scheduler / cron) with repeat options |
+| **AI Generation** | Generate full org structures from natural language |
+| **Typed Variables** | API Key, Password, Note, Text types with masking and root-to-agent inheritance |
+| **Layouts** | Save and switch between named configurations |
+| **Node Duplication** | Ctrl+C/V/D to copy entire team subtrees |
+| **Autosave** | Editors save automatically after 800ms idle |
+| **Export/Import** | Full org to JSON, import on another machine |
+| **Zero Lock-In** | Standard Claude Code config files -- no proprietary formats |
 
 ---
 
@@ -277,44 +209,41 @@ Produces platform-specific installers in `src-tauri/target/release/bundle/`.
 | Validation | [Zod](https://zod.dev/) |
 | Native APIs | Tauri FS, Dialog, and Shell plugins |
 
----
-
-## Configuration
-
-ATM stores its configuration in a `.aui/` directory at the project root:
-
-| File | Purpose |
-|------|---------|
-| `.aui/settings.json` | API key, color preferences, auto-save |
-| `.aui/tree.json` | Tree structure, group metadata, variables |
-| `.aui/deploy-primer.md` | Last generated deploy primer |
-| `.aui/schedules.json` | Scheduled job definitions |
-| `.aui/schedules/` | Generated deploy scripts for scheduled runs |
-| `.aui/layouts/` | Named layout files with `index.json` manifest |
-
-Set your Claude API key in the Settings panel to enable AI-powered features (team generation, description generation, skill file generation). Deployed team sessions run on your own Claude subscription -- ATM only uses the API for generation features.
-
----
-
 ## Platform Support
 
 | Platform | Status | Terminal |
 |----------|--------|---------|
-| Windows | Primary | PowerShell |
-| macOS | Supported | bash |
+| Windows | Full support | PowerShell |
+| macOS | Full support | bash (Terminal.app) |
 | Linux | Supported | bash |
-
-Deploy spawns an external terminal window on all platforms and launches the Claude CLI with the generated briefing.
 
 ---
 
-## Development
+## Changelog
 
-```bash
-pnpm dev          # Frontend only (hot reload, no native features)
-pnpm tauri dev    # Full desktop app (hot reload + Tauri native APIs)
-pnpm build        # Type-check
-```
+### v0.7.0 (2026-02-27)
+- **Added:** macOS support -- DMG installer now available alongside Windows EXE/MSI
+- **Added:** GitHub Actions workflow to build macOS DMG on tagged releases
+- **Fixed:** macOS terminal launch uses osascript instead of `open -a Terminal` (scripts now execute instead of opening as documents)
+- **Fixed:** Scheduled shell scripts are now `chmod +x` on macOS/Linux so cron jobs can execute them
+- **Fixed:** Project load errors now log details to console instead of being silently swallowed
+- **Improved:** Platform detection uses `navigator.userAgent` via shared utility instead of deprecated `navigator.platform`
+- **Improved:** Tauri bundle config includes macOS category and minimum system version
+
+### v0.6.5 (2026-02-26)
+- **Fixed:** AI-generated descriptions now auto-save when clicking to another node
+- **Fixed:** New nodes appear directly below their parent instead of at a random distant position
+- **Fixed:** Skill name resolution uses comprehensive lookup map
+- **Added:** Node duplication via Ctrl+C/V/D and right-click context menu
+
+### v0.6.4
+- **Added:** Copy/paste/duplicate entire team subtrees
+- **Fixed:** Pipeline schedules run deploy script directly
+- **Fixed:** PowerShell deploy scripts use UTF-8 BOM encoding
+
+### v0.6.3
+- **Fixed:** Pipeline deploy.ps1 encoding issues
+- **Added:** Dynamic version display in UI
 
 ---
 
@@ -322,12 +251,10 @@ pnpm build        # Type-check
 
 [MIT](LICENSE)
 
----
-
 ## Contributing
 
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-If ATM saves you time managing your AI workforce, consider giving it a star -- it helps others discover the project.
+Built by one person who got tired of managing 30 agents in vim. If it helps you too, a star lets others find it.
