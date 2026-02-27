@@ -366,8 +366,12 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         console.warn("[ATM] Failed to save metadata during load (non-fatal):", saveErr);
       }
 
-      // Load saved layouts after the tree is fully loaded
-      await get().loadLayouts();
+      // Load saved layouts after the tree is fully loaded (non-fatal)
+      try {
+        await get().loadLayouts();
+      } catch (layoutErr) {
+        console.warn("[ATM] Failed to load layouts (non-fatal):", layoutErr);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[ATM] loadProject failed:", err);

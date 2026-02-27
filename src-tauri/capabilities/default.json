@@ -19,6 +19,17 @@
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
     "fs:scope-home-recursive",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$HOME/.aui/**" },
+        { "path": "$HOME/.aui" },
+        { "path": "$HOME/.claude/**" },
+        { "path": "$HOME/.claude" },
+        { "path": "$HOME/CLAUDE.md" },
+        { "path": "$HOME/CLAUDE.local.md" }
+      ]
+    },
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-save",
