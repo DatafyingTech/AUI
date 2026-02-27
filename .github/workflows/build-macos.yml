@@ -15,8 +15,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust stable
+      - name: Install Rust stable with universal targets
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -52,7 +54,7 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
-      - name: Build Tauri app
+      - name: Build Tauri app (universal binary)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,3 +64,4 @@ jobs:
           releaseBody: "macOS build for ATM ${{ github.ref_name }}"
           releaseDraft: false
           prerelease: false
+          args: --target universal-apple-darwin
