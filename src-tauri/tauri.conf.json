@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "ATM",
-  "version": "0.6.5",
+  "version": "0.7.0",
   "identifier": "com.atm.agent-team-manager",
   "build": {
     "frontendDist": "../dist",
@@ -32,6 +32,10 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "category": "DeveloperTool",
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
   }
 }

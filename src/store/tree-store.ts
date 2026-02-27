@@ -8,6 +8,7 @@ import { parseSettingsFile } from "@/services/settings-parser";
 import { writeNodeFile } from "@/services/file-writer";
 import { join, normalizePath, getFileName, generateNodeId, titleCase } from "@/utils/paths";
 import { detectTeam } from "@/utils/grouping";
+import { isWindows } from "@/utils/platform";
 import {
   loadLayoutIndex,
   saveLayoutIndex,
@@ -294,8 +295,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
             }
             nodes.set(node.id, node);
           }
-        } catch {
-          // Skip unparseable files, don't break the whole load
+        } catch (e) {
+          console.warn("[ATM] Failed to parse file:", filePath, e);
         }
       }
 
@@ -354,6 +355,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       // Load saved layouts after the tree is fully loaded
       await get().loadLayouts();
     } catch (err) {
+      console.error("[ATM] loadProject failed:", err);
       set({
         error: err instanceof Error ? err.message : "Failed to load project",
         loading: false,
@@ -921,7 +923,6 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
     await writeTextFile(statusPath, JSON.stringify(statusInit, null, 2));
 
     // Generate deploy script
-    const isWindows = navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
     const statusWinPath = statusPath.replace(/\//g, "\\");
 
     if (isWindows) {

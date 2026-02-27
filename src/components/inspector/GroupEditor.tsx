@@ -8,6 +8,7 @@ import { scanAllSkills, type SkillInfo } from "@/services/skill-scanner";
 import { getApiKey, generateText } from "@/services/claude-api";
 import { toast } from "@/components/common/Toast";
 import { join } from "@/utils/paths";
+import { isWindows, isMac } from "@/utils/platform";
 import type { AuiNode, NodeVariable } from "@/types/aui-node";
 import { VariableEditor } from "./VariableEditor";
 
@@ -489,10 +490,6 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
       await writeTextFile(primerPath, primer);
 
       setDeployOutput((prev) => [...prev, `Primer saved to ${primerPath}`, "Opening terminal..."]);
-
-      // Detect platform
-      const isWindows = navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
-      const isMac = navigator.userAgent.includes("Mac") || navigator.platform.startsWith("Mac");
 
       // Use Rust-side open_terminal command which uses CREATE_NEW_CONSOLE on Windows
       // to guarantee a visible terminal window (bypasses Tauri's CREATE_NO_WINDOW).

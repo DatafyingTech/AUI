@@ -3,6 +3,7 @@ import { readTextFile, exists } from "@tauri-apps/plugin-fs";
 import { useTreeStore } from "@/store/tree-store";
 import { useUiStore } from "@/store/ui-store";
 import { join } from "@/utils/paths";
+import { isWindows } from "@/utils/platform";
 import { toast } from "@/components/common/Toast";
 import {
   loadSchedules as loadSchedulesFromDisk,
@@ -311,8 +312,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
         // Generate pipeline deploy artifacts (primers + deploy script) without opening terminal
         await useTreeStore.getState().deployPipeline(selectedTeamId, { skipLaunch: true });
         const slug = team.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-        const isWin = navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
-        deployScriptPath = join(projectPath, ".aui", `pipeline-${slug}`, isWin ? "deploy.ps1" : "deploy.sh");
+        deployScriptPath = join(projectPath, ".aui", `pipeline-${slug}`, isWindows ? "deploy.ps1" : "deploy.sh");
         primerContent = `Pipeline: ${team.name}\nDeploy script: ${deployScriptPath}`;
       } else {
         // Generate skill files first (non-fatal if it fails)

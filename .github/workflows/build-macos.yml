@@ -1,0 +1,64 @@
+name: Build macOS DMG
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm 9
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Regenerate icon.icns from PNG
+        run: |
+          set -e
+          ICON_PNG="src-tauri/icons/icon.png"
+          ICONSET="src-tauri/icons/icon.iconset"
+          mkdir -p "$ICONSET"
+          for size in 16 32 128 256 512; do
+            sips -z $size $size "$ICON_PNG" --out "$ICONSET/icon_${size}x${size}.png"
+          done
+          for size in 32 64 256 512 1024; do
+            half=$((size / 2))
+            sips -z $size $size "$ICON_PNG" --out "$ICONSET/icon_${half}x${half}@2x.png"
+          done
+          iconutil -c icns "$ICONSET" -o "src-tauri/icons/icon.icns"
+          rm -rf "$ICONSET"
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "ATM ${{ github.ref_name }}"
+          releaseBody: "macOS build for ATM ${{ github.ref_name }}"
+          releaseDraft: false
+          prerelease: false

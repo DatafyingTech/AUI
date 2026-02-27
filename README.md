@@ -150,6 +150,15 @@ Claude receives a comprehensive briefing with complete context about your compan
 
 ## Changelog
 
+### v0.7.0 (2026-02-27)
+- **Added:** macOS support -- DMG installer now available alongside Windows EXE/MSI
+- **Added:** GitHub Actions workflow to build macOS DMG on tagged releases
+- **Fixed:** macOS terminal launch uses osascript instead of `open -a Terminal` (scripts now execute instead of opening as documents)
+- **Fixed:** Scheduled shell scripts are now `chmod +x` on macOS/Linux so cron jobs can execute them
+- **Fixed:** Project load errors now log details to console instead of being silently swallowed
+- **Improved:** Platform detection uses `navigator.userAgent` via shared utility instead of deprecated `navigator.platform`
+- **Improved:** Tauri bundle config includes macOS category and minimum system version
+
 ### v0.6.5 (2026-02-26)
 - **Fixed:** AI-generated descriptions (via Generate button) now auto-save when clicking to another node
 - **Fixed:** New nodes (teams, agents, skills, pipelines) appear directly below their parent instead of at a random distant position
@@ -174,7 +183,9 @@ Claude receives a comprehensive briefing with complete context about your compan
 
 **[Download ATM for Windows](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.exe` installer and you are running in seconds.
 
-> macOS and Linux installers coming soon. For now, build from source below.
+**[Download ATM for macOS](https://github.com/DatafyingTech/AUI/releases/latest)** -- grab the `.dmg` installer.
+
+> **macOS note:** ATM is not signed with an Apple Developer certificate. On first launch, right-click the app and select **Open** (or go to System Settings > Privacy & Security > Open Anyway).
 
 ### Build from Source
 

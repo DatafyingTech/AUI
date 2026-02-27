@@ -247,8 +247,15 @@ fn open_terminal(script_path: String) -> Result<(), String> {
 
     #[cfg(target_os = "macos")]
     {
-        StdCommand::new("open")
-            .args(&["-a", "Terminal", &script_path])
+        let apple_script = format!(
+            r#"tell application "Terminal"
+            activate
+            do script "bash '{}'"
+        end tell"#,
+            script_path.replace("'", "'\\''")
+        );
+        StdCommand::new("osascript")
+            .args(&["-e", &apple_script])
             .spawn()
             .map_err(|e| format!("Failed to open terminal: {}", e))?;
     }

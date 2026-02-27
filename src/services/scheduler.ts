@@ -5,6 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { readTextFile, writeTextFile, exists, mkdir } from "@tauri-apps/plugin-fs";
 import { join } from "@/utils/paths";
+import { isWindows } from "@/utils/platform";
 
 export interface ScheduleRecord {
   id: string;
@@ -119,9 +120,6 @@ export async function createSchedule(
   await writeTextFile(primerPath, primerContent);
 
   // Detect platform
-  const isWindows =
-    navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
-
   let scriptPath: string;
 
   if (isWindows) {
@@ -193,6 +191,11 @@ export async function createSchedule(
       ].join("\n");
     }
     await writeTextFile(scriptPath, shContent);
+
+    // Make shell script executable (macOS/Linux)
+    const { Command } = await import("@tauri-apps/plugin-shell");
+    const chmod = Command.create("bash", ["-c", `chmod +x '${scriptPath}'`]);
+    await chmod.execute();
 
     // Create OS cron job
     await invoke("create_scheduled_task", {
@@ -270,8 +273,6 @@ export async function toggleSchedule(
     const { startTime } = parseCronForOs(record.cron);
     const startDate = getTodayDate();
 
-    const isWindows =
-      navigator.userAgent.includes("Windows") || navigator.platform.startsWith("Win");
     const scriptPathForOs = isWindows
       ? record.scriptPath.replace(/\//g, "\\")
       : record.scriptPath;
