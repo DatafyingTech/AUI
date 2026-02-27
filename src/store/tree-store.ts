@@ -266,6 +266,16 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   async loadProject(path: string) {
     set({ loading: true, error: null });
     try {
+      // Ensure .aui directory exists before any read/write operations
+      try {
+        const auiDir = join(path, ".aui");
+        if (!(await exists(auiDir))) {
+          await mkdir(auiDir, { recursive: true });
+        }
+      } catch (dirErr) {
+        console.warn("[ATM] Could not create .aui directory:", dirErr);
+      }
+
       const filePaths = await scanProject(path);
       const nodes = new Map<string, AuiNode>();
 
@@ -349,15 +359,20 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         loading: false,
       });
 
-      // Persist skillNameCache immediately so it survives restarts
-      await get().saveTreeMetadata();
+      // Save metadata (non-fatal — don't crash load if this fails)
+      try {
+        await get().saveTreeMetadata();
+      } catch (saveErr) {
+        console.warn("[ATM] Failed to save metadata during load (non-fatal):", saveErr);
+      }
 
       // Load saved layouts after the tree is fully loaded
       await get().loadLayouts();
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error("[ATM] loadProject failed:", err);
       set({
-        error: err instanceof Error ? err.message : "Failed to load project",
+        error: `Failed to load project: ${msg}`,
         loading: false,
       });
     }
@@ -493,12 +508,9 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       await writeTextFile(metaPath, JSON.stringify(updated, null, 2));
       set({ metadata: updated });
     } catch (err) {
-      set({
-        error:
-          err instanceof Error
-            ? err.message
-            : "Failed to save tree metadata",
-      });
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[ATM] saveTreeMetadata failed:", err);
+      set({ error: `Failed to save tree metadata: ${msg}` });
     }
   },
 

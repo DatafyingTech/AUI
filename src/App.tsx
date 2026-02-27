@@ -133,6 +133,8 @@ function App() {
   // Load from user's home directory on mount
   useEffect(() => {
     homeDir().then((home) => {
+      console.log("[ATM] Home directory resolved to:", home);
+      console.log("[ATM] Platform:", navigator.userAgent);
       loadProject(home).then(() => {
         useTreeStore.getState().autoGroupByPrefix();
       });
