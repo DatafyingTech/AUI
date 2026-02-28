@@ -1,7 +1,7 @@
 {
   "name": "atm",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +17,7 @@
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@xyflow/react": "^12.10.1",
     "dagre": "^0.8.5",
+    "fflate": "^0.8.2",
     "gray-matter": "^4.0.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -25,7 +26,9 @@
     "zustand": "^5.0.11"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.0",

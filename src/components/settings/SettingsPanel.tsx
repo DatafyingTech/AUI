@@ -1,5 +1,5 @@
 import { useState, useEffect, type CSSProperties } from "react";
-import { readTextFile, writeTextFile, exists, mkdir } from "@tauri-apps/plugin-fs";
+import { readTextFile, writeTextFile, readFile, writeFile, exists, mkdir } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getVersion } from "@tauri-apps/api/app";
 import { useUiStore } from "@/store/ui-store";
@@ -66,6 +66,7 @@ export function SettingsPanel() {
   const [loading, setLoading] = useState(false);
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [version, setVersion] = useState("0.6.3");
+  const [includeSkills, setIncludeSkills] = useState(false);
 
   useEffect(() => {
     getVersion().then(v => setVersion(v)).catch(() => {});
@@ -328,14 +329,25 @@ export function SettingsPanel() {
               <button
                 onClick={async () => {
                   try {
-                    const json = useTreeStore.getState().exportTreeAsJson();
-                    const filePath = await save({
-                      filters: [{ name: "AUI Export", extensions: ["aui.json"] }],
-                      defaultPath: "tree-export.aui.json",
-                    });
-                    if (!filePath) return;
-                    await writeTextFile(filePath, json);
-                    toast("Tree exported successfully", "success");
+                    if (includeSkills) {
+                      const zipData = await useTreeStore.getState().exportTreeAsZip();
+                      const filePath = await save({
+                        filters: [{ name: "ATM Export (ZIP)", extensions: ["atm.zip"] }],
+                        defaultPath: "tree-export.atm.zip",
+                      });
+                      if (!filePath) return;
+                      await writeFile(filePath, zipData);
+                      toast("Tree exported as ZIP with skills", "success");
+                    } else {
+                      const json = useTreeStore.getState().exportTreeAsJson();
+                      const filePath = await save({
+                        filters: [{ name: "AUI Export", extensions: ["aui.json"] }],
+                        defaultPath: "tree-export.aui.json",
+                      });
+                      if (!filePath) return;
+                      await writeTextFile(filePath, json);
+                      toast("Tree exported successfully", "success");
+                    }
                   } catch (err) {
                     toast(`Export failed: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
                   }
@@ -355,18 +367,27 @@ export function SettingsPanel() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(63, 185, 80, 0.1)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
-                Export Tree
+                {includeSkills ? "Export as ZIP" : "Export Tree"}
               </button>
               <button
                 onClick={async () => {
                   try {
-                    const selected = await open({ filters: [{ name: "AUI Export", extensions: ["aui.json"] }] });
+                    const selected = await open({
+                      filters: [{ name: "ATM Export", extensions: ["aui.json", "atm.zip"] }],
+                    });
                     if (!selected) return;
                     const filePath = typeof selected === "string" ? selected : null;
                     if (!filePath) return;
-                    const json = await readTextFile(filePath);
-                    useTreeStore.getState().importTreeFromJson(json);
-                    toast("Tree imported successfully", "success");
+
+                    if (filePath.endsWith(".atm.zip")) {
+                      const data = await readFile(filePath);
+                      await useTreeStore.getState().importTreeFromZip(data);
+                      toast("Tree imported from ZIP (with skills)", "success");
+                    } else {
+                      const json = await readTextFile(filePath);
+                      useTreeStore.getState().importTreeFromJson(json);
+                      toast("Tree imported successfully", "success");
+                    }
                   } catch (err) {
                     toast(`Import failed: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
                   }
@@ -389,8 +410,28 @@ export function SettingsPanel() {
                 Import Tree
               </button>
             </div>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                marginBottom: 8,
+                marginTop: 4,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={includeSkills}
+                onChange={(e) => setIncludeSkills(e.target.checked)}
+                style={{ width: 14, height: 14, cursor: "pointer" }}
+              />
+              <span style={{ fontSize: 12, color: "var(--text-primary)" }}>
+                Include skill files (export as .atm.zip)
+              </span>
+            </label>
             <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 4 }}>
-              Export saves your tree layout and metadata. Import restores from a .aui.json file.
+              Export saves your tree layout and metadata. ZIP includes skill files. Import supports both .aui.json and .atm.zip.
             </div>
           </>
         )}

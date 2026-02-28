@@ -16,6 +16,8 @@ import {
   loadLayout,
   deleteLayout as deleteLayoutFile,
 } from "@/services/layout-service";
+import { getVersion } from "@tauri-apps/api/app";
+import { packExportZip, unpackExportZip } from "@/services/zip-service";
 
 interface TreeState {
   nodes: Map<string, AuiNode>;
@@ -28,6 +30,7 @@ interface TreeState {
   currentLayoutId: string | null;
   layouts: Array<{ id: string; name: string; lastModified: number }>;
   clipboard: { nodes: AuiNode[]; sourceParentId: string | null } | null;
+  appVersion: string;
 }
 
 interface TreeActions {
@@ -55,7 +58,9 @@ interface TreeActions {
   generateTeamSkillFiles(teamId: string): Promise<string[]>;
   saveCompanyPlan(): Promise<string>;
   exportTreeAsJson(): string;
+  exportTreeAsZip(): Promise<Uint8Array>;
   importTreeFromJson(json: string): void;
+  importTreeFromZip(data: Uint8Array): Promise<void>;
   autoGroupByPrefix(): void;
   loadLayouts(): Promise<void>;
   saveCurrentAsLayout(name: string): Promise<string>;
@@ -262,6 +267,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   currentLayoutId: null,
   layouts: [],
   clipboard: null,
+  appVersion: "",
 
   async loadProject(path: string) {
     set({ loading: true, error: null });
@@ -350,6 +356,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       }
       console.log(`[ATM] Loaded ${nodes.size} nodes (${skillCount} skills, ${skillNameCache.size} cached names)`);
 
+      const appVersion = await getVersion();
+
       set({
         nodes,
         skillNameCache,
@@ -357,6 +365,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         projectPath: path,
         metadata,
         loading: false,
+        appVersion,
       });
 
       // Save metadata (non-fatal — don't crash load if this fails)
@@ -1959,7 +1968,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
     const exportData: TreeExport = {
       version: "1.0",
       exportedAt: Date.now(),
-      appVersion: "0.3.4",
+      appVersion: get().appVersion || "0.7.1",
       owner: metadata?.owner ?? { name: "Unknown", description: "" },
       nodes: nodeArray,
       hierarchy,
@@ -1969,6 +1978,55 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
     };
 
     return JSON.stringify(exportData, null, 2);
+  },
+
+  async exportTreeAsZip(): Promise<Uint8Array> {
+    const json = get().exportTreeAsJson();
+    const { nodes, projectPath } = get();
+    const skillFiles = new Map<string, string>();
+
+    if (projectPath) {
+      for (const [, node] of nodes) {
+        if (node.kind === "skill" && node.sourcePath) {
+          try {
+            const content = await readTextFile(node.sourcePath);
+            // Extract skill folder name from path: .../skills/{name}/SKILL.md
+            const parts = normalizePath(node.sourcePath).split("/");
+            const skillsIdx = parts.lastIndexOf("skills");
+            if (skillsIdx >= 0 && skillsIdx < parts.length - 1) {
+              const relativePath = parts.slice(skillsIdx + 1).join("/");
+              skillFiles.set(relativePath, content);
+            }
+          } catch {
+            console.warn(`[ATM] Could not read skill file: ${node.sourcePath}`);
+          }
+        }
+      }
+
+      // Also collect skills assigned to groups
+      for (const [, node] of nodes) {
+        if ((node.kind === "group" || node.kind === "pipeline") && node.assignedSkills.length > 0) {
+          for (const skillId of node.assignedSkills) {
+            const skillNode = nodes.get(skillId);
+            if (skillNode?.kind === "skill" && skillNode.sourcePath && !skillFiles.has(skillNode.sourcePath)) {
+              try {
+                const content = await readTextFile(skillNode.sourcePath);
+                const parts = normalizePath(skillNode.sourcePath).split("/");
+                const skillsIdx = parts.lastIndexOf("skills");
+                if (skillsIdx >= 0 && skillsIdx < parts.length - 1) {
+                  const relativePath = parts.slice(skillsIdx + 1).join("/");
+                  skillFiles.set(relativePath, content);
+                }
+              } catch {
+                console.warn(`[ATM] Could not read assigned skill file: ${skillNode.sourcePath}`);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return packExportZip(json, skillFiles);
   },
 
   importTreeFromJson(json: string) {
@@ -2031,6 +2089,39 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
     // Persist to disk
     get().saveTreeMetadata();
+  },
+
+  async importTreeFromZip(data: Uint8Array) {
+    const { treeJson, skillFiles } = unpackExportZip(data);
+    const { projectPath } = get();
+
+    // Write extracted skill files to ~/.claude/skills/
+    if (projectPath && skillFiles.size > 0) {
+      for (const [relativePath, content] of skillFiles) {
+        try {
+          const skillPath = join(projectPath, ".claude", "skills", relativePath);
+          // Ensure directory exists (e.g., ~/.claude/skills/skill-name/)
+          const parts = relativePath.split("/");
+          if (parts.length > 1) {
+            const dir = join(projectPath, ".claude", "skills", ...parts.slice(0, -1));
+            if (!(await exists(dir))) {
+              await mkdir(dir, { recursive: true });
+            }
+          }
+          await writeTextFile(skillPath, content);
+        } catch (err) {
+          console.warn(`[ATM] Failed to write skill file ${relativePath}:`, err);
+        }
+      }
+    }
+
+    // Import the tree data
+    get().importTreeFromJson(treeJson);
+
+    // Rescan to pick up newly written skill files
+    if (projectPath) {
+      await get().loadProject(projectPath);
+    }
   },
 
   autoGroupByPrefix() {

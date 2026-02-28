@@ -12,6 +12,7 @@ import { DeleteConfirmDialog } from "./components/dialogs/DeleteConfirmDialog";
 import { SettingsPanel } from "./components/settings/SettingsPanel";
 import { SchedulePanel } from "./components/schedule/SchedulePanel";
 import { ToastContainer, toast } from "./components/common/Toast";
+import { SetupWizard } from "./components/setup/SetupWizard";
 import { useTreeStore } from "./store/tree-store";
 import { useUiStore } from "./store/ui-store";
 import { startWatching } from "./services/file-watcher";
@@ -202,6 +203,7 @@ function App() {
       />
       <SettingsPanel />
       <SchedulePanelWrapper />
+      <SetupWizard />
       <ToastContainer />
     </div>
   );
