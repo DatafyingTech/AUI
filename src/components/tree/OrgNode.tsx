@@ -14,6 +14,7 @@ const KIND_COLORS: Record<NodeKind, string> = {
   context: "#8b5cf6",
   group: "#4a9eff",
   pipeline: "#d946ef",
+  note: "#d29922",
 };
 
 function OrgNodeInner({ data, selected }: NodeProps) {

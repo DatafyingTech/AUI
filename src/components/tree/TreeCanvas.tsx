@@ -17,6 +17,7 @@ import { useTreeStore } from "@/store/tree-store";
 import { useUiStore } from "@/store/ui-store";
 import { layoutNodes } from "./layout";
 import { OrgNode } from "./OrgNode";
+import { StickyNote } from "./StickyNote";
 import { InsertEdge } from "./InsertEdge";
 import { SearchBar } from "@/components/common/SearchBar";
 import { ContextMenu } from "@/components/common/ContextMenu";
@@ -25,7 +26,7 @@ import type { NodeKind } from "@/types/aui-node";
 import { getApiKey, generateText } from "@/services/claude-api";
 import { toast } from "@/components/common/Toast";
 
-const nodeTypes = { orgNode: OrgNode };
+const nodeTypes = { orgNode: OrgNode, stickyNote: StickyNote };
 const edgeTypes = { insertEdge: InsertEdge };
 const EMPTY_POSITIONS: Record<string, { x: number; y: number }> = {};
 
@@ -49,6 +50,10 @@ function filterTreeNodes(
   const matchingIds = new Set<string>();
   for (const [id, node] of allNodes) {
     if (id === "root") {
+      matchingIds.add(id);
+      continue;
+    }
+    if (node.kind === "note") {
       matchingIds.add(id);
       continue;
     }
@@ -488,16 +493,30 @@ export function TreeCanvas() {
 
     // Pane context menu (no node selected)
     if (!nodeId) {
-      const paneKinds: { label: string; kind: NodeKind }[] = [
-        { label: "New Team", kind: "group" },
-        { label: "New Project Manager", kind: "pipeline" },
-      ];
-      return paneKinds.map(({ label, kind }) => ({
-        label,
-        onClick: () => {
-          useUiStore.getState().openCreateDialog(undefined, kind);
+      return [
+        {
+          label: "New Team",
+          onClick: () => useUiStore.getState().openCreateDialog(undefined, "group" as NodeKind),
         },
-      }));
+        {
+          label: "New Project Manager",
+          onClick: () => useUiStore.getState().openCreateDialog(undefined, "pipeline" as NodeKind),
+        },
+        { label: "", onClick: () => {}, divider: true },
+        {
+          label: "Add Sticky Note",
+          onClick: () => {
+            const id = useTreeStore.getState().createStickyNote(
+              "",
+              "yellow",
+              { x: contextMenu!.x - 100, y: contextMenu!.y - 50 },
+            );
+            if (id) {
+              toast("Sticky note added", "info");
+            }
+          },
+        },
+      ];
     }
 
     // Build "Move to..." submenu targets

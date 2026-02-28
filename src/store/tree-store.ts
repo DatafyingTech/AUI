@@ -61,6 +61,9 @@ interface TreeActions {
   exportTreeAsZip(): Promise<Uint8Array>;
   importTreeFromJson(json: string): void;
   importTreeFromZip(data: Uint8Array): Promise<void>;
+  createStickyNote(text: string, color: string, position: { x: number; y: number }): string;
+  updateStickyNote(id: string, updates: { text?: string; color?: string }): void;
+  deleteStickyNote(id: string): void;
   autoGroupByPrefix(): void;
   loadLayouts(): Promise<void>;
   saveCurrentAsLayout(name: string): Promise<string>;
@@ -809,6 +812,11 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       const globalSkillNames = (rootNode?.assignedSkills ?? [])
         .map((sid) => resolveSkillName(sid))
         .filter((n): n is string => n !== null);
+      // Also include pipeline-level skills
+      const pipelineSkillNames = (pipeline.assignedSkills ?? [])
+        .map((sid: string) => resolveSkillName(sid))
+        .filter((n: string | null): n is string => n !== null);
+      globalSkillNames.push(...pipelineSkillNames);
       const globalVars = (rootNode?.variables ?? []).filter((v: any) => v.name?.trim());
       const pipelineVars = pipeline.variables.filter((v) => v.name.trim());
 
@@ -888,14 +896,14 @@ This is step ${i + 1} of ${pipeline.pipelineSteps.length} in pipeline "${pipelin
 ## Company / Organization Context
 - **Owner:** ${rootName}
 ${rootDesc ? `- **Description:** ${rootDesc}` : ""}
-${globalSkillNames.length > 0 ? `- **Global Skills:** ${globalSkillNames.join(", ")}` : ""}
+${globalSkillNames.length > 0 ? `- **Global Skills (MUST load and use via Skill tool):** ${globalSkillNames.map(s => `/${s}`).join(", ")}` : ""}
 ${siblingTeams.length > 0 ? `- **Other Teams:** ${siblingTeams.join(", ")}` : ""}
 ${globalVars.length > 0 ? `\n### Global Variables\n${globalVars.map((v: any) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
 ${pipelineVars.length > 0 ? `\n### Pipeline Variables\n${pipelineVars.map((v) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
 ${prevStepsSection}
 ## Team: ${teamNode.name}
 ${teamNode.promptBody || "(no description)"}
-${teamSkillBlocks.length > 0 ? `\n### Team Skills\n${teamSkillBlocks.join("\n")}` : ""}
+${teamSkillBlocks.length > 0 ? `\n### Team Skills\nYou MUST load and actively use each of these skills by invoking them with the Skill tool:\n${teamSkillBlocks.join("\n")}` : ""}
 ${teamNode.variables.length > 0 ? `\n### Team Variables\n${teamNode.variables.map((v) => `- [${v.type ?? "text"}] ${v.name}: ${v.value || "(not set)"}`).join("\n")}` : ""}
 
 ## Your Manager Skill File
@@ -922,7 +930,7 @@ You MUST follow these steps exactly:
    \`${outputPath}\`
    This file will be read by the next team in the pipeline. Include: what was done, key files created/modified, important decisions, and anything the next team needs to know.
 6. **Shut down** — After writing the handoff, shut down the team
-${teamSkillBlocks.length > 0 || globalSkillNames.length > 0 ? `\n## SKILLS\nSkills listed above can be invoked using the \`Skill\` tool.` : ""}
+${teamSkillBlocks.length > 0 || globalSkillNames.length > 0 ? `\n## SKILLS — MANDATORY\nYou MUST invoke each skill listed above using the \`Skill\` tool before beginning work. These skills contain critical context, tools, and instructions that are required for this deployment. Do NOT skip loading any skill.` : ""}
 IMPORTANT: Each agent already has their full skill file content above. Pass it directly in their spawn prompt.
 `;
 
@@ -1383,18 +1391,18 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
     // Global skills
     if (globalSkillNames.length > 0) {
-      content += `## Global Skills (Available to All Agents)\n\n`;
-      content += `These skills are assigned at the organization level and are available to every agent:\n\n`;
+      content += `## Global Skills (MANDATORY — All Agents MUST Load)\n\n`;
+      content += `These skills are assigned at the organization level. Every agent MUST load and use each skill by invoking it with the \`Skill\` tool:\n\n`;
       for (const sName of globalSkillNames) {
-        content += `- \`/${sName}\`\n`;
+        content += `- \`/${sName}\` — **MUST invoke** using \`Skill\` tool\n`;
       }
       content += "\n";
     }
 
     // Team-level skills
     if (teamSkillNames.length > 0) {
-      content += `## Team Skills\n\n`;
-      content += `All agents on this team share access to:\n\n`;
+      content += `## Team Skills (MANDATORY — All Agents MUST Load)\n\n`;
+      content += `All agents on this team MUST load and use these skills by invoking them with the \`Skill\` tool:\n\n`;
       for (const sName of teamSkillNames) {
         content += `- \`/${sName}\`\n`;
         // Include skill content inline
@@ -1434,7 +1442,7 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
     content += `1. **Team Lead:** The deploying Claude instance acts as the team manager ("${team.name}" lead)\n`;
     content += `2. **Communication:** Agents communicate through the team lead via SendMessage. Direct peer messaging is allowed for tightly-coupled tasks\n`;
     content += `3. **Task Assignment:** The team lead creates tasks (TaskCreate) and assigns them to agents by name\n`;
-    content += `4. **Skill Invocation:** Agents invoke their assigned skills using slash commands (e.g. \`/skill-name\`)\n`;
+    content += `4. **Skill Invocation:** Agents MUST invoke their assigned skills using the \`Skill\` tool at the start of their work. Skills contain critical context and instructions — do NOT skip any skill\n`;
     content += `5. **Conflict Resolution:** If agents produce conflicting outputs, the team lead resolves by evaluating against the launch prompt goals\n`;
     content += `6. **File Ownership:** Each agent should work on distinct files to avoid merge conflicts. If overlap is unavoidable, coordinate via the team lead\n\n`;
 
@@ -1941,6 +1949,11 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
 
     for (const [id, node] of nodes) {
       if (id === "root") continue;
+      if (node.kind === "note") {
+        // Notes are free-floating, include in nodeArray but not hierarchy
+        nodeArray.push(node);
+        continue;
+      }
       hierarchy[id] = node.parentId;
       nodeArray.push(node);
 
@@ -2124,11 +2137,73 @@ IMPORTANT: Each agent already has their full skill file content above. Pass it d
     }
   },
 
+  createStickyNote(text: string, color: string, position: { x: number; y: number }): string {
+    const id = `note-${Date.now().toString(36)}`;
+    const node: AuiNode = {
+      id,
+      name: "Note",
+      kind: "note",
+      parentId: null,
+      team: null,
+      sourcePath: "",
+      config: null,
+      promptBody: text,
+      tags: [`color:${color}`],
+      lastModified: Date.now(),
+      validationErrors: [],
+      assignedSkills: [],
+      variables: [],
+      launchPrompt: "",
+      pipelineSteps: [],
+    };
+    set((state) => {
+      const next = new Map(state.nodes);
+      next.set(id, node);
+      const positions = { ...state.metadata?.positions, [id]: position };
+      return {
+        nodes: next,
+        metadata: state.metadata ? { ...state.metadata, positions } : null,
+      };
+    });
+    get().saveTreeMetadata();
+    return id;
+  },
+
+  updateStickyNote(id: string, updates: { text?: string; color?: string }) {
+    const node = get().nodes.get(id);
+    if (!node || node.kind !== "note") return;
+    const changes: Partial<AuiNode> = { lastModified: Date.now() };
+    if (updates.text !== undefined) changes.promptBody = updates.text;
+    if (updates.color !== undefined) {
+      changes.tags = [...node.tags.filter((t) => !t.startsWith("color:")), `color:${updates.color}`];
+    }
+    set((state) => {
+      const next = new Map(state.nodes);
+      next.set(id, { ...node, ...changes });
+      return { nodes: next };
+    });
+    get().saveTreeMetadata();
+  },
+
+  deleteStickyNote(id: string) {
+    set((state) => {
+      const next = new Map(state.nodes);
+      next.delete(id);
+      const positions = { ...state.metadata?.positions };
+      delete positions[id];
+      return {
+        nodes: next,
+        metadata: state.metadata ? { ...state.metadata, positions } : null,
+      };
+    });
+    get().saveTreeMetadata();
+  },
+
   autoGroupByPrefix() {
     set((state) => {
       const next = new Map(state.nodes);
       for (const [id, node] of next) {
-        if (id === "root") continue;
+        if (id === "root" || node.kind === "note") continue;
         const team = detectTeam(node.name);
         next.set(id, { ...node, team });
       }

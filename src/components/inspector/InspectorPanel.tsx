@@ -22,6 +22,7 @@ const kindColors: Record<NodeKind, string> = {
   settings: "#6e7681",
   group: "#4a9eff",
   pipeline: "#d946ef",
+  note: "#d29922",
 };
 
 const badgeStyle = (kind: NodeKind): CSSProperties => ({

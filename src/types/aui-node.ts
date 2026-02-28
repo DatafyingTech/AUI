@@ -2,7 +2,7 @@ import type { AgentConfig } from "./agent";
 import type { SkillConfig } from "./skill";
 import type { SettingsConfig } from "./settings";
 
-export type NodeKind = "human" | "agent" | "skill" | "context" | "settings" | "group" | "pipeline";
+export type NodeKind = "human" | "agent" | "skill" | "context" | "settings" | "group" | "pipeline" | "note";
 
 export interface PipelineStep {
   id: string;          // unique step ID (e.g., "step-{timestamp}")
